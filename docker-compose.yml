@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  rekrutaibackendhelper:
+    image: agungdk/citilyst-backend:latest
+    build:
+      context: .
+      dockerfile: ./Dockerfile 
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ""
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - app_network
+
+  redis:
+    image: "redis:7.2"
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+    restart: always
+
+    
+networks:
+  app_network:
+    driver: bridge

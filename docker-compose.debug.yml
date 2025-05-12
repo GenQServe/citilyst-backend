@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  rekrutaibackendhelper:
+    image: agungdk/citilyst-backend:latest
+    build:
+      context: .
+      dockerfile: ./Dockerfile.debug
+    command: [
+      "sh", "-c",
+      "pip install debugpy -t /tmp && \
+      python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    ]
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: ""
+      REDIS_URL: "redis://redis:6379"
+      API_ROUTER_KEY: ""
+    depends_on:
+      - redis
+    networks:
+      - app_network
+
+  redis:
+    image: "redis:7.2"
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+    restart: always
+
+networks:
+  app_network:
+    driver: bridge

@@ -1,0 +1,30 @@
+# app
+# pygemstones>=0.0.13
+# black>=22.0.0
+pygemstones
+black
+pydantic
+fastapi
+uvicorn
+requests
+sqlalchemy
+mysql-connector-python
+throttled
+apscheduler
+dotenv
+asyncpg
+greenlet
+cuid
+openai
+asyncio
+python-jose[cryptography]
+python-multipart
+# aioredis 
+redis
+# fastapi-cache2
+# test
+pytest
+pytest-asyncio
+pytest-mock
+pytest-cov
+httpx
