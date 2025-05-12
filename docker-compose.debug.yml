@@ -1,25 +1,20 @@
-version: "3.9"
 
 services:
-  rekrutaibackendhelper:
-    image: agungdk/citilyst-backend:latest
+  citilystbackend:
+    container_name: citilyst_be_debug
+    image: genqserve/citilyst-backend:latest
     build:
       context: .
       dockerfile: ./Dockerfile.debug
-    command: [
-      "sh", "-c",
-      "pip install debugpy -t /tmp && \
-      python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
-    ]
+    command: >
+      sh -c "pip install debugpy && python -m debugpy --wait-for-client --listen 0.0.0.0:5678 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "8000:8000"
       - "5678:5678"
     volumes:
       - .:/app
-    environment:
-      DATABASE_URL: ""
-      REDIS_URL: "redis://redis:6379"
-      API_ROUTER_KEY: ""
+    env_file:
+      - .env
     depends_on:
       - redis
     networks:

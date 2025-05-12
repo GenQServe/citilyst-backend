@@ -7,6 +7,8 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from helpers.google_auth import GoogleAuth
+from sqlalchemy.ext.asyncio import AsyncSession
+from helpers.db import db_connection
 from services.auth import AuthService
 import redis.asyncio as redis
 
@@ -32,13 +34,19 @@ async def login_google(redirect_uri: str, path: Optional[str] = None):
     summary="Auth with Google Callback",
     description="Auth with Google OAuth2.0 Callback",
 )
-async def auth_google(code: str, state: str, response: Response):
+async def auth_google(
+    code: str,
+    state: str,
+    response: Response,
+    db: AsyncSession = Depends(db_connection.get_db),
+):
     try:
         auth_service = AuthService()
         logging.info(f"Authenticating with Google code: {code}")
         logging.info(f"Authenticating with Google state: {state}")
         print("Authenticating with Google code: ", code)
         print("Authenticating with Google state: ", state)
+
         # Retrieve redirect URI from Redis
         redirect_uri = await redis_client.get(f"redirect_uri:{state}")
         if not redirect_uri:
@@ -49,6 +57,31 @@ async def auth_google(code: str, state: str, response: Response):
         # Get path if it exists
         path = await redis_client.get(f"path:{state}")
         user_info = await auth_service.authenticate_with_google(code)
+        if not user_info:
+            raise HTTPException(
+                status_code=400, detail="Failed to authenticate with Google"
+            )
+        logging.info(f"User info: {user_info}")
+        print("User info: ", user_info)
+        # Check if user already exists in database
+        existing_user = await auth_service.get_user_by_email(db, user_info["email"])
+        if existing_user:
+            # User already exists, update user info if necessary
+            await auth_service.update_user(
+                db, existing_user.id, user_info["name"], user_info["picture"]
+            )
+        else:
+            # User does not exist, create a new user
+            logging.info(f"Creating new user: {user_info['email']}")
+            print("Creating new user: ", user_info["email"])
+            # create user in database
+            created_user = await auth_service.create_user(
+                db, user_info["email"], user_info["name"], user_info["picture"]
+            )
+            user_info["id"] = created_user.id
+            user_info["name"] = created_user.name
+            user_info["picture"] = created_user.picture
+
         token = auth_service.create_token(user_info)
         frontend_url = redirect_uri
 
@@ -64,7 +97,7 @@ async def auth_google(code: str, state: str, response: Response):
         redirect_response.set_cookie(
             key="token",
             value=token,
-            httponly=False,
+            httponly=True,
             secure=True,
             samesite="none",
             max_age=86400,  # 1 day

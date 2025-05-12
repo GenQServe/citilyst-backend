@@ -106,3 +106,16 @@ class AuthService:
             raise HTTPException(
                 status_code=500, detail=f"Failed to create token: {str(e)}"
             )
+
+    # create user to db
+    async def create_user(self, db, user_data: dict) -> dict:
+        """
+        Create user in the database
+        """
+        try:
+
+            return {"message": "User created successfully", "data": user_data}
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to create user: {str(e)}"
+            )

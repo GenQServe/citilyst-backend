@@ -1,9 +1,5 @@
 FROM python:3.12-slim
 
-# Set environment variables
-ENV DATABASE_URL=""
-ENV REDIS_URL="redis://redis:6379"
-
 # Install dependencies & system packages
 RUN apt-get update && apt-get install -y \
     curl \
@@ -11,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
-RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --upgrade pip --root-user-action=ignore
 
 # Set working directory
 WORKDIR /app
@@ -20,12 +16,12 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install dependencies
-RUN python3 -m pip install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --no-cache-dir -r requirements.txt --root-user-action=ignore
 
 # Copy seluruh kode aplikasi
 COPY . /app/
 
-# Expose port untuk FastAPI
-EXPOSE 8000
+# Expose port untuk FastAPI dan debugpy
+EXPOSE 8000 5678
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
