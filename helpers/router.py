@@ -8,5 +8,4 @@ from routes.auth import routes_auth
 def setup(app: FastAPI):
     prefix = "/v1"
     app.include_router(router_my_model, prefix=prefix)
-    app.include_router(routes_interview, prefix=prefix)
     app.include_router(routes_auth)
