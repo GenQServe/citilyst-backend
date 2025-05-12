@@ -1,8 +1,8 @@
 version: "3.9"
 
 services:
-  rekrutaibackendhelper:
-    image: agungdk/citilyst-backend:latest
+  citilystbackend:
+    image: genqserve/citilyst-backend:latest
     build:
       context: .
       dockerfile: ./Dockerfile 

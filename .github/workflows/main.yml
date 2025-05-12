@@ -22,14 +22,14 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: agungdk/citilyst-backend:latest
+          images: genqserve/citilyst-backend:latest
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: agungdk/citilyst-backend:latest
+          tags: genqserve/citilyst-backend:latest
           labels: ${{ steps.meta.outputs.labels }}
   deploy:
     runs-on: ubuntu-latest
