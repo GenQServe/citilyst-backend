@@ -16,7 +16,7 @@ log.setup()
 app = FastAPI(
     title="Citilyst - API Documentation",
     version="0.1.0",
-    description="Documentation API for Rekrut AI",
+    description="Documentation API for Citilyst Application",
 )
 
 is_production = "--production" in sys.argv
