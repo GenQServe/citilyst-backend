@@ -1,3 +1,4 @@
+import logging
 import os
 import secrets
 from urllib.parse import urlencode
@@ -8,9 +9,15 @@ from jose import jwt, JWTError
 from fastapi import HTTPException
 from helpers.google_auth import GoogleAuth
 from typing import Optional
+from models.users import User
+from fastapi.responses import Response
+from sqlalchemy.ext.asyncio import AsyncSession
+from passlib.context import CryptContext
+from sqlalchemy.future import select
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AuthService:
