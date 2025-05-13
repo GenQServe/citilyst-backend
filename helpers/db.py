@@ -20,10 +20,7 @@ is_production = (
 
 def get_database_url():
     raw_url = os.getenv("DATABASE_URL")
-    # jika di production, ambil dari github secret
-    if is_production:
-        # ambil dari github secret
-        raw_url = {{secrets.DATABASE_URL}}
+
     if not raw_url:
         print("DATABASE_URL tidak ditemukan di environment variables.")
         return "sqlite+aiosqlite:///./test.db"
