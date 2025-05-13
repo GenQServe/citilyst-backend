@@ -1,4 +1,5 @@
 import sys
+import os
 from fastapi import FastAPI, Request
 from fastapi.concurrency import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,39 +14,59 @@ from helpers.db import db_connection
 # Setup logging
 log.setup()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        logging.info("Starting application...")
+        logging.info("Initializing database connection & tables")
+        await db_connection.init()
+        logging.info("Database initialized successfully")
+        yield
+    except Exception as e:
+        logging.error(f"Error during startup: {e}")
+        raise
+    finally:
+        logging.info("Shutting down application...")
+        try:
+            close_all_sessions()
+            await db_connection.close()
+            logging.info("Application shutdown complete")
+        except Exception as e:
+            logging.error(f"Error during shutdown: {e}")
+
+
 app = FastAPI(
     title="Citilyst - API Documentation",
     version="0.1.0",
     description="Documentation API for Citilyst Application",
+    lifespan=lifespan,
 )
 
-is_production = "--production" in sys.argv
-mainport = (
-    8000 if "--port" not in sys.argv else int(sys.argv[sys.argv.index("--port") + 1])
+is_production = (
+    os.getenv("ENVIRONMENT", "development").lower() == "production"
+    or "--production" in sys.argv
 )
+mainport = int(os.getenv("PORT", "8000"))
+if "--port" in sys.argv:
+    try:
+        mainport = int(sys.argv[sys.argv.index("--port") + 1])
+    except (IndexError, ValueError):
+        pass
 is_development = not is_production
 
 # Setup Middleware
 rate_limiter.setup(app)
 cors.setup(app)
 
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins="*",
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     logging.info("🚀 Starting up: Initializing Database Connection")
-#     await db_connection.init()
-#     yield
-#     logging.info("🛑 Shutting down: Closing Database Connection")
-#     close_all_sessions()
-#     await db_connection.close()
-
 
 # Setup Routes & Static Files
 router.setup(app)
@@ -61,8 +82,16 @@ _ = jobs.__name__
 
 
 def main():
-    print("[RUN MODE]:", "PRODUCTION" if is_production else "DEVELOPMENT")
-    uvicorn.run("main:app", host="0.0.0.0", port=mainport, reload=is_development)
+    print(f"[ENV] Running in {'PRODUCTION' if is_production else 'DEVELOPMENT'} mode")
+    print(f"[PORT] Listening on port {mainport}")
+
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=mainport,
+        reload=is_development,
+        log_level="info",
+    )
 
 
 if __name__ == "__main__":

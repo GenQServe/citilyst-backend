@@ -1,6 +1,8 @@
 # app
 # pygemstones>=0.0.13
 # black>=22.0.0
+pytz 
+python-dateutil
 pygemstones
 black
 pydantic
@@ -12,6 +14,7 @@ mysql-connector-python
 throttled
 apscheduler
 dotenv
+passlib
 asyncpg
 greenlet
 cuid

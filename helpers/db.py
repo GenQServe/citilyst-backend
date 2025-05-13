@@ -1,61 +1,125 @@
 import os
+import logging
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
-from urllib.parse import urlparse
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 
-# Load environment variables
 load_dotenv()
 
 Base = declarative_base()
-tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+
+
+def get_database_url():
+    raw_url = os.getenv("DATABASE_URL")
+    if not raw_url:
+        print("DATABASE_URL tidak ditemukan di environment variables.")
+        return "sqlite+aiosqlite:///./test.db"
+
+    if raw_url.startswith("postgresql://") and not raw_url.startswith(
+        "postgresql+asyncpg://"
+    ):
+        try:
+            parsed = urlparse(raw_url)
+            return f"postgresql+asyncpg://{parsed.username}:{parsed.password}@{parsed.hostname}{parsed.path}"
+        except Exception as e:
+            print(f"Error parsing DATABASE_URL: {e}")
+            return "sqlite+aiosqlite:///./test.db"
+    return raw_url
+
+
+DATABASE_URL = get_database_url()
+logging.info(
+    f"Using database: {DATABASE_URL.split('@')[0].split('://')[0]}://*****@*****"
+)
+
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=True,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    connect_args={"command_timeout": 10},  #
+)
+
+AsyncSessionLocal = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+)
+
+
+async def init_models():
+    """Initialize database tables."""
+    try:
+        print("Creating database tables if not exist...")
+
+        from models.users import User
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("Database tables initialized successfully")
+    except Exception as e:
+        print(f"Error initializing database tables: {e}")
+        raise
+
+
+async def get_db():
+    """Get database session for FastAPI dependency injection."""
+    session = AsyncSessionLocal()
+    try:
+        yield session
+    except Exception as e:
+        print(f"Database session error: {e}")
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
 
 class Connection:
-    def __init__(self):
-        self.url = os.getenv("DATABASE_URL")
-        self.engine = create_async_engine(
-            f"postgresql+asyncpg://{tmpPostgres.username}:{tmpPostgres.password}@{tmpPostgres.hostname}{tmpPostgres.path}?ssl=require",
-            pool_size=20,  # Set a reasonable pool size
-            max_overflow=10,  # Allow some overflow connections
-            pool_timeout=30,  # Connection timeout in seconds
-            pool_recycle=1800,  # Recycle connections every 30 minutes
-            pool_pre_ping=True,  # Check connection validity before using
-            echo=False,  # Set to True for debugging SQL queries
-        )
+    """Database connection manager."""
 
-        self.SessionLocal = async_sessionmaker(
-            bind=self.engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-            autoflush=False,  # Don't auto-flush for better control
-        )
+    def __init__(self):
+        self.engine = engine
+        self.SessionLocal = AsyncSessionLocal
+
+    async def init(self):
+        """Initialize database tables."""
+        await init_models()
+
+    # Fungsi alternatif jika butuh session di luar request handler
+    async def get_session(self):
+        """Get a new session outside of request handlers."""
+        session = self.SessionLocal()
+        try:
+            return session
+        except Exception as e:
+            logging.error(f"Error creating session: {e}")
+            await session.close()
+            raise
 
     @asynccontextmanager
     async def get_db_session(self):
-        """Get a database session as an async context manager"""
         session = self.SessionLocal()
         try:
             yield session
+        except Exception as e:
+            logging.error(f"Database session error: {e}")
+            await session.rollback()
+            raise
         finally:
             await session.close()
 
-    async def get_db(self):
-        """Get a database session as a FastAPI dependency"""
-        async with self.SessionLocal() as session:
-            try:
-                yield session
-            except Exception as e:
-                await session.rollback()
-                raise e
-            finally:
-                await session.close()
-
     async def close(self):
-        """Close all connections in the engine's connection pool"""
+        """Close database connection."""
+        print("Closing database connection...")
         await self.engine.dispose()
+        print("Database connection closed")
 
 
-# Singleton instance
 db_connection = Connection()
