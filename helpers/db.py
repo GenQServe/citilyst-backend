@@ -1,5 +1,7 @@
 import os
 import logging
+import secrets
+import sys
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
@@ -10,9 +12,18 @@ load_dotenv()
 
 Base = declarative_base()
 
+is_production = (
+    os.getenv("ENVIRONMENT", "development").lower() == "production"
+    or "--production" in sys.argv
+)
+
 
 def get_database_url():
     raw_url = os.getenv("DATABASE_URL")
+    # jika di production, ambil dari github secret
+    if is_production:
+        # ambil dari github secret
+        raw_url = {{secrets.DATABASE_URL}}
     if not raw_url:
         print("DATABASE_URL tidak ditemukan di environment variables.")
         return "sqlite+aiosqlite:///./test.db"
