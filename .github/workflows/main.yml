@@ -67,7 +67,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           source: "docker-compose.yml,.env"
-          target: "/home/${{ secrets.SSH_USERNAME }}/citilyst-backend"
+          target: "./"
 
       # Jalankan Docker Compose di server
       - name: Deploy to server
@@ -77,7 +77,6 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USERNAME }}/citilyst-backend
             docker compose down || true
             docker image prune -af || true
             docker compose pull
