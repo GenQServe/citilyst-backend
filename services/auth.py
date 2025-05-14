@@ -51,7 +51,9 @@ class AuthService:
                 status_code=500, detail=f"Failed to login with Google: {str(e)}"
             )
 
-    async def authenticate_with_google(self, code: str) -> dict:
+    async def authenticate_with_google(
+        self, code: str, request: Request = None
+    ) -> dict:
         """
         Authenticate user with Google OAuth2.0
         """
@@ -62,7 +64,7 @@ class AuthService:
                 "code": code,
                 "client_id": GoogleAuth.get_client_id(),
                 "client_secret": GoogleAuth.get_client_secret(),
-                "redirect_uri": GoogleAuth.get_redirect_uri(),
+                "redirect_uri": GoogleAuth.get_redirect_uri(request),
                 "grant_type": "authorization_code",
             }
             response = requests.post(token_url, data=data)
