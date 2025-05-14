@@ -35,13 +35,12 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' }}
     needs: [build_and_push]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Buat .env file dengan GitHub Secrets
+      # Buat file .env dari GitHub Secrets
       - name: Create .env file
         run: |
           cat > .env << EOF
@@ -51,7 +50,17 @@ jobs:
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           EOF
 
-      # Upload docker-compose.yml dan .env file ke server
+      # Buat folder remote jika belum ada
+      - name: Ensure remote directory exists
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            mkdir -p /home/${{ secrets.USERNAME }}/citilyst-backend
+
+      # Upload docker-compose.yml dan .env ke server
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -60,9 +69,8 @@ jobs:
           key: ${{ secrets.KEY }}
           source: "docker-compose.yml,.env"
           target: "/home/${{ secrets.USERNAME }}/citilyst-backend"
-          strip_components: 0
 
-      # Deploy ke server menggunakan environment variables
+      # Jalankan Docker Compose di server
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -71,13 +79,8 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd /home/${{ secrets.USERNAME }}/citilyst-backend
-            # Stop existing containers
             docker compose down || true
-            # Hapus image lama untuk menghindari penggunaan disk
             docker image prune -af || true
-            # Pull latest image
             docker compose pull
-            # Deploy dengan environment dari .env
             docker compose up -d
-            # Verifikasi container berjalan
             docker compose ps
