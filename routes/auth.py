@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.params import Cookie, Header
@@ -13,6 +14,11 @@ from services.auth import AuthService
 import redis.asyncio as redis
 
 from services.users import UserService
+
+is_production = (
+    os.getenv("ENVIRONMENT", "development").lower() == "production"
+    or "--production" in sys.argv
+)
 
 routes_auth = APIRouter(prefix="/auth", tags=["Auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
