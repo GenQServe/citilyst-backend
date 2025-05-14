@@ -45,7 +45,6 @@ jobs:
         run: |
           cat > .env << EOF
           DATABASE_URL=${{ secrets.DATABASE_URL }}
-          REDIS_URL=${{ secrets.REDIS_URL }}
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           EOF
@@ -54,31 +53,31 @@ jobs:
       - name: Ensure remote directory exists
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
-            mkdir -p /home/${{ secrets.USERNAME }}/citilyst-backend
+            mkdir -p /home/${{ secrets.SSH_USERNAME }}/citilyst-backend
 
       # Upload docker-compose.yml dan .env ke server
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.4
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
           source: "docker-compose.yml,.env"
-          target: "/home/${{ secrets.USERNAME }}/citilyst-backend"
+          target: "/home/${{ secrets.SSH_USERNAME }}/citilyst-backend"
 
       # Jalankan Docker Compose di server
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /home/${{ secrets.USERNAME }}/citilyst-backend
+            cd /home/${{ secrets.SSH_USERNAME }}/citilyst-backend
             docker compose down || true
             docker image prune -af || true
             docker compose pull
