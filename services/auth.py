@@ -28,11 +28,9 @@ class AuthService:
         Login with Google OAuth2.0
         """
         try:
+            request_scheme = "http" if request.url.hostname == "localhost" else "https"
             google_redirect_uri = (
-                request.url.scheme
-                + "://"
-                + request.url.netloc
-                + "/auth/google/callback"
+                request_scheme + "://" + request.url.netloc + "/auth/google/callback"
             )
             # print(f"Google Redirect URI: {google_redirect_uri}")
             state_token = secrets.token_urlsafe(16)
