@@ -48,6 +48,7 @@ jobs:
           REDIS_URL=${{ secrets.REDIS_URL }}
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
           EOF
 
       # Buat folder remote jika belum ada

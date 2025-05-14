@@ -6,7 +6,7 @@ import redis.asyncio as redis  # Make sure this is the async version
 import requests
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from helpers.google_auth import GoogleAuth
 from typing import Optional
 from models.users import User
@@ -21,11 +21,20 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AuthService:
-    async def login_google(self, redirect_uri: str, path: str) -> dict:
+    async def login_google(
+        self, redirect_uri: str, path: str, request: Request = None
+    ) -> dict:
         """
         Login with Google OAuth2.0
         """
         try:
+            google_redirect_uri = (
+                request.url.scheme
+                + "://"
+                + request.url.netloc
+                + "/auth/google/callback"
+            )
+            # print(f"Google Redirect URI: {google_redirect_uri}")
             state_token = secrets.token_urlsafe(16)
             await redis_client.setex(f"redirect_uri:{state_token}", 3600, redirect_uri)
             await redis_client.setex(f"path:{state_token}", 3600, path)
@@ -33,7 +42,7 @@ class AuthService:
             google_auth_url = "https://accounts.google.com/o/oauth2/auth?" + urlencode(
                 {
                     "client_id": GoogleAuth.get_client_id(),
-                    "redirect_uri": GoogleAuth.get_redirect_uri(),
+                    "redirect_uri": google_redirect_uri,
                     "response_type": "code",
                     "scope": "openid email profile",
                     "state": state_token,
