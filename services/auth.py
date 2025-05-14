@@ -29,10 +29,8 @@ class AuthService:
         """
         try:
             request_scheme = "http" if request.url.hostname == "localhost" else "https"
-            google_redirect_uri = (
-                request_scheme + "://" + request.url.netloc + "/auth/google/callback"
-            )
-            # print(f"Google Redirect URI: {google_redirect_uri}")
+            google_redirect_uri = GoogleAuth.get_redirect_uri(request)
+            print(f"Google Redirect URI: {google_redirect_uri}")
             state_token = secrets.token_urlsafe(16)
             await redis_client.setex(f"redirect_uri:{state_token}", 3600, redirect_uri)
             await redis_client.setex(f"path:{state_token}", 3600, path)
