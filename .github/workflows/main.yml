@@ -50,14 +50,14 @@ jobs:
           EOF
 
       # Buat folder remote jika belum ada
-      - name: Ensure remote directory exists
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            mkdir -p /home/${{ secrets.SSH_USERNAME }}/citilyst-backend
+      # - name: Ensure remote directory exists
+      #   uses: appleboy/ssh-action@v1.0.0
+      #   with:
+      #     host: ${{ secrets.SSH_HOST }}
+      #     username: ${{ secrets.SSH_USERNAME }}
+      #     key: ${{ secrets.SSH_KEY }}
+      #     script: |
+      #       mkdir -p /home/${{ secrets.SSH_USERNAME }}/citilyst-backend
 
       # Upload docker-compose.yml dan .env ke server
       - name: Copy files to server
