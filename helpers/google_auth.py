@@ -1,5 +1,8 @@
 # buatkan fungsi untuk mengambil client_id, client_secret,redirect_uri dari .env
+import logging
 import os
+
+from fastapi import Request
 
 
 class GoogleAuth:
@@ -17,8 +20,18 @@ class GoogleAuth:
         return GoogleAuth.GOOGLE_CLIENT_SECRET
 
     @staticmethod
-    def get_redirect_uri():
-        return GoogleAuth.GOOGLE_REDIRECT_URI
+    def get_redirect_uri(request: Request = None):
+        if request:
+            try:
+                base_url = str(request.base_url).rstrip("/")
+                callback_path = GoogleAuth.CALLBACK_PATH.lstrip("/")
+                redirect_uri = f"{base_url}/{callback_path}"
+                logging.info(f"Dynamically generated redirect URI: {redirect_uri}")
+                return redirect_uri
+            except Exception as e:
+                logging.error(f"Error building redirect URI from request: {e}")
+        if GoogleAuth.GOOGLE_REDIRECT_URI:
+            return GoogleAuth.GOOGLE_REDIRECT_URI
 
     @staticmethod
     def get_frontend_uri():
