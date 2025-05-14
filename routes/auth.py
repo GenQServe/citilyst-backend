@@ -107,6 +107,7 @@ async def auth_google(
     code: str,
     state: str,
     response: Response,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -122,7 +123,7 @@ async def auth_google(
             )
 
         path = await redis_client.get(f"path:{state}")
-        user_info = await auth_service.authenticate_with_google(code)
+        user_info = await auth_service.authenticate_with_google(code, request)
         if not user_info:
             raise HTTPException(
                 status_code=400, detail="Failed to authenticate with Google"

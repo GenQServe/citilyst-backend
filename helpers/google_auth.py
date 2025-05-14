@@ -8,7 +8,6 @@ from fastapi import Request
 class GoogleAuth:
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
     GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-    GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
     FRONTEND_URL = os.getenv("FRONTEND_URI")
 
     @staticmethod
@@ -23,9 +22,12 @@ class GoogleAuth:
     def get_redirect_uri(request: Request = None):
         if request:
             try:
-                base_url = str(request.base_url).rstrip("/")
-                callback_path = GoogleAuth.CALLBACK_PATH.lstrip("/")
-                redirect_uri = f"{base_url}/{callback_path}"
+                request_scheme = (
+                    "http" if request.url.hostname == "localhost" else "https"
+                )
+                redirect_uri = (
+                    f"{request_scheme}://{request.url.netloc}/auth/google/callback"
+                )
                 logging.info(f"Dynamically generated redirect URI: {redirect_uri}")
                 return redirect_uri
             except Exception as e:
