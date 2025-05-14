@@ -94,9 +94,11 @@ async def login(
     summary="Login with Google",
     description="Login with Google OAuth2.0",
 )
-async def login_google(redirect_uri: str, path: Optional[str] = None):
+async def login_google(
+    redirect_uri: str, path: Optional[str] = None, request: Request = None
+):
     auth_service = AuthService()
-    result = await auth_service.login_google(redirect_uri, path)
+    result = await auth_service.login_google(redirect_uri, path, request)
     return result
 
 
