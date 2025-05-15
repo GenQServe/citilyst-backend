@@ -46,9 +46,18 @@ jobs:
           cat > .env << EOF
           DATABASE_URL=${{ secrets.DATABASE_URL }}
           REDIS_URL=${{ secrets.REDIS_URL }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+          MAIL_USER_NAME=${{ secrets.MAIL_USER_NAME }}
+          MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+          MAIL_FROM=${{ secrets.MAIL_FROM }}
+          MAIL_PORT=${{ secrets.MAIL_PORT }}
+          MAIL_SERVER=${{ secrets.MAIL_SERVER }}
+          ONESIGNAL_APP_ID=${{ secrets.ONESIGNAL_APP_ID }}
+          ONESIGNAL_API_KEY=${{ secrets.ONESIGNAL_API_KEY }}
+          ONESIGNAL_OTP_TEMPLATE_ID=${{ secrets.ONESIGNAL_OTP_TEMPLATE_ID }}
           EOF
 
       # Buat folder remote jika belum ada

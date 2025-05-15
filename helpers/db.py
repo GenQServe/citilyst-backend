@@ -100,7 +100,6 @@ class Connection:
         """Initialize database tables."""
         await init_models()
 
-    # Fungsi alternatif jika butuh session di luar request handler
     async def get_session(self):
         """Get a new session outside of request handlers."""
         session = self.SessionLocal()

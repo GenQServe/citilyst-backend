@@ -4,7 +4,7 @@ import secrets
 from urllib.parse import urlencode
 import redis.asyncio as redis  # Make sure this is the async version
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from fastapi import HTTPException, Request
 from helpers.google_auth import GoogleAuth
@@ -106,16 +106,32 @@ class AuthService:
         Create JWT token with user data
         """
         try:
-            payload = {
+            payload_1 = {
                 "sub": user_data.get("id"),
                 "email": user_data.get("email"),
                 "name": user_data.get("name"),
                 "picture": user_data.get("picture"),
-                "exp": datetime.utcnow() + timedelta(days=1),  # Token expires in 1 day
+                "phone": user_data.get("phone"),
+                "address": user_data.get("address"),
+                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
             }
-            return jwt.encode(
-                payload, GoogleAuth.get_client_secret(), algorithm="HS256"
+            access_token = jwt.encode(
+                payload_1, GoogleAuth.get_client_secret(), algorithm="HS256"
             )
+            payload_2 = {
+                "sub": user_data.get("id"),
+                "email": user_data.get("email"),
+                "name": user_data.get("name"),
+                "picture": user_data.get("picture"),
+                "phone": user_data.get("phone"),
+                "address": user_data.get("address"),
+                "exp": datetime.now(timezone.utc) + timedelta(days=30),
+            }
+            refresh_token = jwt.encode(
+                payload_2, GoogleAuth.get_client_secret(), algorithm="HS256"
+            )
+            return access_token
+
         except Exception as e:
             raise HTTPException(
                 status_code=500, detail=f"Failed to create token: {str(e)}"

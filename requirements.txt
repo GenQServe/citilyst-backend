@@ -6,6 +6,9 @@ python-dateutil
 pygemstones
 black
 pydantic
+pydantic[email]
+pydantic-settings
+fastapi_mail
 fastapi
 uvicorn
 requests
@@ -13,10 +16,12 @@ sqlalchemy
 mysql-connector-python
 throttled
 apscheduler
+itsdangerous
 dotenv
 passlib
 asyncpg
 greenlet
+bcrypt 
 cuid
 openai
 asyncio

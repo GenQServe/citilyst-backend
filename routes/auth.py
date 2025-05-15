@@ -2,16 +2,23 @@ import logging
 import os
 import sys
 from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.params import Cookie, Header
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+from helpers.common import create_verification_token
 from helpers.google_auth import GoogleAuth
 from sqlalchemy.ext.asyncio import AsyncSession
 from helpers.db import db_connection, get_db
+from helpers.jwt import JwtHelper
+from schemas.users import UserCreate
 from services.auth import AuthService
 import redis.asyncio as redis
+from helpers.config import settings
+from helpers.mailer import send_email_async, send_otp_email, send_otp_email_async
+from schemas.otp import OTPRequest, OTPResendRequest, OTPResponse
+from schemas.auth import BasicAuthRequest
 
 from services.users import UserService
 
@@ -26,22 +33,21 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 
-# buatkan route untuk login dengan email dan password
 @routes_auth.post(
     "/login",
     summary="Login with Email and Password",
     description="Login with email and password",
 )
 async def login(
-    request: Request,
+    request: BasicAuthRequest,
     db: AsyncSession = Depends(get_db),
 ):
     auth_service = AuthService()
     user_service = UserService()
-    data = await request.json()
-    email = data.get("email")
-    password = data.get("password")
-    print(f"Data: {data}")
+
+    email = request.email
+    password = request.password
+
     if not email or not password:
         return JSONResponse(
             status_code=400,
@@ -60,21 +66,33 @@ async def login(
             raise HTTPException(status_code=401, detail="Invalid password")
 
         token = auth_service.create_token(user)
-        return JSONResponse(
-            status_code=201,
+
+        response = JSONResponse(
             content={
                 "message": "Login successful",
                 "data": {
-                    "token": token,
-                    "user": {
-                        "id": user["id"],
-                        "email": user["email"],
-                        "name": user["name"],
-                        "image_url": user["image_url"],
-                    },
+                    "id": user["id"],
+                    "email": user["email"],
+                    "name": user["name"],
+                    "picture": user["image_url"],
+                    "phone_number": user["phone_number"],
+                    "address": user["address"],
+                    "nik": user["nik"],
+                    "is_verified": user["is_verified"],
+                    "role": user["role"],
                 },
-            },
+            }
         )
+        response.set_cookie(
+            key="token",
+            value=token,
+            httponly=False,
+            secure=True,
+            samesite="none",
+            max_age=3600,
+            path="/",
+        )
+        return response
     except HTTPException as e:
         logging.error(f"Login error: {e.status_code}: {e.detail}")
         return JSONResponse(
@@ -83,6 +101,256 @@ async def login(
         )
     except Exception as e:
         print(f"Login error: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Internal server error"},
+        )
+
+
+@routes_auth.post(
+    "/register",
+    summary="Register User",
+    description="Register user with email and password",
+    status_code=status.HTTP_201_CREATED,
+)
+async def register(
+    request: UserCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    auth_service = AuthService()
+    user_service = UserService()
+    try:
+        email = request.email
+        password = request.password
+        name = request.name
+        nik = request.nik
+        print(f"Data: {request}")
+        if not email or not password or not name:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Email, password, and name are required"},
+            )
+        try:
+            existing_user = await user_service.get_user_by_email(db, email)
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Email already registered")
+
+        except HTTPException as e:
+            if e.status_code != 404:
+                # create new user
+                raise
+            print(f"Creating user: {email}")
+            user_data = {
+                "email": email,
+                "password": password,
+                "name": name,
+                "nik": nik,
+            }
+
+            created_user = await user_service.create_user(db, user_data)
+            print(f"User created: {created_user}")
+
+            token = create_verification_token(created_user["email"])
+            logging.info(f"Verification token: {token}")
+            # print(token)
+            # email_verification_endpoint = (
+            #     f"{request.redirect_url}/auth/confirm-email/{token}/"
+            # )
+            # logging.info(f"Email verification endpoint: {email_verification_endpoint}")
+
+            # Send OTP email
+            otp_sent = False
+            otp_error = None
+            try:
+                logging.info(f"Sending OTP to: {created_user['email']}")
+
+                otp_sent = await send_otp_email(
+                    email_to=created_user["email"],
+                    user_id=created_user["id"],
+                )
+                if otp_sent:
+                    logging.info(f"OTP sent successfully to {created_user['email']}")
+                else:
+                    logging.warning(f"OTP sending failed, but user was created")
+            except Exception as e:
+                otp_error = str(e)
+                logging.error(f"Error sending OTP: {otp_error}")
+
+            # Prepare response
+            message = (
+                "OTP sent to your email"
+                if otp_sent
+                else "Account created, but OTP sending failed"
+            )
+
+            return JSONResponse(
+                content={
+                    "message": message,
+                    "data": {
+                        "id": created_user["id"],
+                        "email": created_user["email"],
+                        "is_verified": False,
+                        "otp_sent": otp_sent,
+                    },
+                }
+            )
+    except HTTPException as e:
+        logging.error(f"Register error: {e.status_code}: {e.detail}")
+        return JSONResponse(
+            status_code=e.status_code,
+            content={"message": str(e.detail)},
+        )
+    except Exception as e:
+        logging.error(f"Register error: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Internal server error"},
+        )
+
+
+@routes_auth.post(
+    "/verify-otp",
+    summary="Verify OTP",
+    description="Verify OTP sent to email",
+)
+async def verify_otp(
+    request: OTPRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    auth_service = AuthService()
+    user_service = UserService()
+    try:
+        email = request.email
+        otp = request.otp
+        print(f"Data: {request}")
+        if not email or not otp:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Email and OTP are required"},
+            )
+        try:
+            existing_user = await user_service.get_user_by_email(db, email)
+            if not existing_user:
+                raise HTTPException(status_code=400, detail="Email not registered")
+
+            stored_otp = await redis_client.get(f"otp:{existing_user['id']}")
+            if not stored_otp or stored_otp != otp:
+                raise HTTPException(status_code=400, detail="Invalid OTP")
+
+            update_data = {"is_verified": True}
+            updated_user = await user_service.update_user(
+                db, existing_user["id"], update_data
+            )
+
+            # Clear OTP from Redis
+            await redis_client.delete(f"otp:{existing_user['id']}")
+
+            token = auth_service.create_token(updated_user)
+
+            response = JSONResponse(
+                content={
+                    "message": "OTP verified successfully",
+                    "data": {
+                        "id": updated_user["id"],
+                        "email": updated_user["email"],
+                        "name": updated_user["name"],
+                        "picture": updated_user["image_url"],
+                        "phone_number": updated_user["phone_number"],
+                        "address": updated_user["address"],
+                        "nik": updated_user["nik"],
+                        "is_verified": updated_user["is_verified"],
+                    },
+                }
+            )
+
+            response.set_cookie(
+                key="token",
+                value=token,
+                httponly=False,
+                secure=True,
+                samesite="none",
+                max_age=3600,
+                path="/",
+            )
+            return response
+        except HTTPException as e:
+            logging.error(f"Verify OTP error: {e.status_code}: {e.detail}")
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"message": str(e.detail)},
+            )
+    except Exception as e:
+        logging.error(f"Verify OTP error: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Internal server error"},
+        )
+
+
+@routes_auth.post(
+    "/resend-otp",
+    summary="Resend OTP",
+    description="Resend OTP to email",
+)
+async def resend_otp(
+    request: OTPResendRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    auth_service = AuthService()
+    user_service = UserService()
+    try:
+        email = request.email
+        print(f"Data: {request}")
+        if not email:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Email is required"},
+            )
+        try:
+            existing_user = await user_service.get_user_by_email(db, email)
+            if not existing_user:
+                raise HTTPException(status_code=400, detail="Email not registered")
+            if existing_user["is_verified"]:
+                raise HTTPException(status_code=400, detail="Email already verified")
+            # Send OTP email
+            otp_sent = False
+            otp_error = None
+            try:
+
+                await redis_client.delete(f"otp:{existing_user['id']}")
+                logging.info(f"Resending OTP to: {existing_user['email']}")
+                otp_sent = await send_otp_email(
+                    email_to=existing_user["email"],
+                    user_id=existing_user["id"],
+                )
+                if otp_sent:
+                    logging.info(f"OTP sent successfully to {existing_user['email']}")
+                else:
+                    logging.warning(f"OTP sending failed")
+            except Exception as e:
+                otp_error = str(e)
+                logging.error(f"Error sending OTP: {otp_error}")
+
+            message = "OTP resent to your email" if otp_sent else "Failed to resend OTP"
+
+            return JSONResponse(
+                content={
+                    "message": message,
+                    "data": {
+                        "id": existing_user["id"],
+                        "email": existing_user["email"],
+                        "otp_sent": otp_sent,
+                    },
+                }
+            )
+        except HTTPException as e:
+            logging.error(f"Resend OTP error: {e.status_code}: {e.detail}")
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"message": str(e.detail)},
+            )
+    except Exception as e:
+        logging.error(f"Resend OTP error: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"message": "Internal server error"},
@@ -113,6 +381,7 @@ async def auth_google(
     try:
         auth_service = AuthService()
         user_service = UserService()
+        jwt_helper = JwtHelper()
         logging.info(f"Authenticating with Google code: {code}")
         logging.info(f"Authenticating with Google state: {state}")
 
@@ -143,9 +412,7 @@ async def auth_google(
             logging.info(f"Updating existing user: {user_info['email']}")
             update_data = {
                 "name": user_info.get("name"),
-                "image_url": user_info.get(
-                    "picture"
-                ),  # Gunakan image_url, bukan picture
+                "image_url": user_info.get("picture"),
                 "email": user_info.get("email"),
             }
             updated_user = await user_service.update_user(
@@ -153,43 +420,37 @@ async def auth_google(
             )
             user_info["id"] = updated_user["id"]
             user_info["name"] = updated_user["name"]
-            user_info["picture"] = updated_user[
-                "image_url"
-            ]  # Mapping kembali ke picture untuk token
+            user_info["picture"] = updated_user["image_url"]
         else:
             logging.info(f"Creating new user: {user_info['email']}")
             create_data = {
                 "email": user_info["email"],
                 "name": user_info.get("name"),
-                "image_url": user_info.get("picture"),  # Gunakan image_url di DB
-                # Tidak perlu password untuk OAuth user
+                "image_url": user_info.get("picture"),
             }
             created_user = await user_service.create_user(db, create_data)
             user_info["id"] = created_user["id"]
             user_info["name"] = created_user["name"]
-            user_info["picture"] = created_user[
-                "image_url"
-            ]  # Mapping kembali ke picture untuk token
-
-        token = auth_service.create_token(user_info)
+            user_info["picture"] = created_user["image_url"]
+        token = jwt_helper.create_token(user_info)
         frontend_url = redirect_uri
 
-        if path:
-            if not frontend_url.endswith("/") and not path.startswith("/"):
-                frontend_url += "/"
-            elif frontend_url.endswith("/") and path.startswith("/"):
-                path = path[1:]
+        # if path:
+        #     if not frontend_url.endswith("/") and not path.startswith("/"):
+        #         frontend_url += "/"
+        #     elif frontend_url.endswith("/") and path.startswith("/"):
+        #         path = path[1:]
 
-            frontend_url += path
+        frontend_url += "/" if user_info.get("is_verified") == True else "/profile"
         redirect_response = RedirectResponse(url=frontend_url)
 
         redirect_response.set_cookie(
             key="token",
             value=token,
-            httponly=True,
+            httponly=False,
             secure=True,
             samesite="none",
-            max_age=86400,
+            max_age=3600,
             path="/",
         )
         await redis_client.delete(f"redirect_uri:{state}")
