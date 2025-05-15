@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
     JWT_SECRET: str
-    FRONTEND_URL: str
     MAIL_USER_NAME: str
     MAIL_PASSWORD: str
     MAIL_FROM: str

@@ -153,10 +153,10 @@ async def register(
             token = create_verification_token(created_user["email"])
             logging.info(f"Verification token: {token}")
             # print(token)
-            email_verification_endpoint = (
-                f"{request.redirect_url}/auth/confirm-email/{token}/"
-            )
-            logging.info(f"Email verification endpoint: {email_verification_endpoint}")
+            # email_verification_endpoint = (
+            #     f"{request.redirect_url}/auth/confirm-email/{token}/"
+            # )
+            # logging.info(f"Email verification endpoint: {email_verification_endpoint}")
 
             # Send OTP email
             otp_sent = False
