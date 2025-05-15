@@ -7,6 +7,7 @@ import requests
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from fastapi import HTTPException
+from helpers.common import hash_password
 from helpers.google_auth import GoogleAuth
 from typing import List, Optional
 from models.users import User
@@ -14,6 +15,8 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from sqlalchemy.future import select
+
+from schemas.users import UserCreate
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
@@ -80,9 +83,11 @@ class UserService:
             logging.info(f"Creating user with data: {user_data}")
             password = user_data.get("password")
             if password:
-                hashed_password = pwd_context.hash(password)
+                hashed_password = hash_password(password)
+                is_verified = False
             else:
                 hashed_password = None
+                is_verified = True
             utc_now = datetime.now(timezone.utc)
             image_url = user_data.get("image_url") or user_data.get("picture")
             if not image_url:
@@ -93,11 +98,11 @@ class UserService:
                 password=hashed_password,
                 name=user_data.get("name"),
                 phone_number=user_data.get("phone_number"),
+                nik=user_data.get("nik"),
                 address=user_data.get("address"),
-                date_of_birth=user_data.get("date_of_birth"),
                 image_url=image_url,
                 role=user_data.get("role", "user"),
-                last_login=utc_now,
+                is_verified=is_verified,
             )
             db.add(user)
             await db.commit()
@@ -125,7 +130,8 @@ class UserService:
                 "name",
                 "phone_number",
                 "address",
-                "date_of_birth",
+                "nik",
+                "is_verified",
                 "image_url",
                 "password",
             ]

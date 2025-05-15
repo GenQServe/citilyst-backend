@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Kode OTP Anda</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            background-color: #ffffff;
+            max-width: 480px;
+            margin: auto;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .otp {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 20px 0;
+            letter-spacing: 4px;
+        }
+
+        .footer {
+            font-size: 12px;
+            color: #888888;
+            margin-top: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Kode OTP Anda</h2>
+        <p>Halo,</p>
+        <p>Berikut adalah kode OTP Anda untuk verifikasi. Silakan gunakan kode ini untuk melanjutkan proses:</p>
+        <div class="otp">{{ otp_code }}</div>
+        <p>Kode ini hanya berlaku selama <strong>5 menit</strong>. Jangan berikan kode ini kepada siapa pun.</p>
+        <p>Jika Anda tidak meminta kode ini, abaikan saja email ini.</p>
+        <div class="footer">
+            Terima kasih telah menggunakan layanan kami.<br>
+            Citilyst
+        </div>
+    </div>
+</body>
+
+</html>

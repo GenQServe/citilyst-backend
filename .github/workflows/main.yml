@@ -46,6 +46,7 @@ jobs:
           cat > .env << EOF
           DATABASE_URL=${{ secrets.DATABASE_URL }}
           REDIS_URL=${{ secrets.REDIS_URL }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
