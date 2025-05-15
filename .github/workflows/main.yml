@@ -45,6 +45,11 @@ jobs:
         run: |
           cat > .env << EOF
           DATABASE_URL=${{ secrets.DATABASE_URL }}
+          PGDATABASE=${{ secrets.PGDATABASE }}
+          PGPORT=${{ secrets.PGPORT }}
+          PGHOST=${{ secrets.PGHOST }}
+          PGUSER=${{ secrets.PGUSER }}
+          PGPASSWORD=${{ secrets.PGPASSWORD }}
           REDIS_URL=${{ secrets.REDIS_URL }}
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
@@ -55,6 +60,8 @@ jobs:
           MAIL_FROM=${{ secrets.MAIL_FROM }}
           MAIL_PORT=${{ secrets.MAIL_PORT }}
           MAIL_SERVER=${{ secrets.MAIL_SERVER }}
+          PYTHONUNBUFFERED=1
+          PROJECT_NAME=${{ secrets.PROJECT_NAME }}
           ONESIGNAL_APP_ID=${{ secrets.ONESIGNAL_APP_ID }}
           ONESIGNAL_API_KEY=${{ secrets.ONESIGNAL_API_KEY }}
           ONESIGNAL_OTP_TEMPLATE_ID=${{ secrets.ONESIGNAL_OTP_TEMPLATE_ID }}
