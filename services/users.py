@@ -15,11 +15,10 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from sqlalchemy.future import select
+from helpers.redis import set_redis_value, get_redis_value, delete_redis_value
 
 from schemas.users import UserCreate
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 

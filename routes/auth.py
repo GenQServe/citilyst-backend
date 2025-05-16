@@ -1,8 +1,9 @@
 import logging
 import os
 import sys
-from typing import Annotated, Optional
+from typing import Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.params import Cookie, Header
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
@@ -12,6 +13,7 @@ from helpers.google_auth import GoogleAuth
 from sqlalchemy.ext.asyncio import AsyncSession
 from helpers.db import db_connection, get_db
 from helpers.jwt import JwtHelper
+from middleware.rbac_middleware import verify_role
 from schemas.users import UserCreate
 from services.auth import AuthService
 import redis.asyncio as redis
@@ -19,6 +21,7 @@ from helpers.config import settings
 from helpers.mailer import send_email_async, send_otp_email, send_otp_email_async
 from schemas.otp import OTPRequest, OTPResendRequest, OTPResponse
 from schemas.auth import BasicAuthRequest
+from helpers.redis import get_redis_value, set_redis_value, delete_redis_value
 
 from services.users import UserService
 
@@ -29,8 +32,78 @@ is_production = (
 
 routes_auth = APIRouter(prefix="/auth", tags=["Auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+
+
+@routes_auth.get(
+    "/me",
+    summary="Get User Info",
+    description="Get user info from token in cookie or Authorization header",
+    response_model=None,
+)
+async def get_user_info(
+    request: Request,
+    token: str = Cookie(None),
+    db: AsyncSession = Depends(get_db),
+):
+    auth_service = AuthService()
+    user_service = UserService()
+    jwt_helper = JwtHelper()
+    try:
+        if not token:
+            # No token found in header or cookie
+            return JSONResponse(
+                status_code=401, content={"message": "Authentication required"}
+            )
+
+        token_value = str(token)
+
+        if not token_value:
+            return JSONResponse(
+                status_code=401, content={"message": "Authentication required"}
+            )
+
+        # Decode token menggunakan jwt_helper yang sudah memiliki secret key
+        payload = jwt_helper.decode(token_value)
+        user_info = {
+            "id": payload.get("sub"),
+            "email": payload.get("email"),
+            "name": payload.get("name"),
+            "picture": payload.get("picture"),
+            "role": payload.get("role"),
+            "is_verified": payload.get("is_verified"),
+            "expire": payload.get("exp"),
+        }
+
+        user_id = user_info.get("id")
+        if not user_id or not isinstance(user_id, str):
+            return JSONResponse(
+                status_code=401, content={"message": "Invalid user ID in token"}
+            )
+        user = await user_service.get_user(db, user_id)
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "User info retrieved successfully",
+                "data": jsonable_encoder(user),
+            },
+        )
+    except JWTError as e:
+        logging.error(f"JWT error: {str(e)}")
+        return JSONResponse(
+            status_code=401, content={"message": "Invalid authentication credentials"}
+        )
+    except HTTPException as e:
+        logging.error(f"Authentication error: {str(e)}")
+        return JSONResponse(
+            status_code=e.status_code,
+            content={"message": str(e.detail)},
+        )
+    except Exception as e:
+        logging.error(f"Authentication error: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Internal server error"},
+        )
 
 
 @routes_auth.post(
@@ -44,7 +117,7 @@ async def login(
 ):
     auth_service = AuthService()
     user_service = UserService()
-
+    jwt_helper = JwtHelper()
     email = request.email
     password = request.password
 
@@ -65,7 +138,7 @@ async def login(
         if not user_service.verify_password(password, user["password"]):
             raise HTTPException(status_code=401, detail="Invalid password")
 
-        token = auth_service.create_token(user)
+        token = jwt_helper.create_token(user_data=user)
 
         response = JSONResponse(
             content={
@@ -219,6 +292,7 @@ async def verify_otp(
 ):
     auth_service = AuthService()
     user_service = UserService()
+    jwt_helper = JwtHelper()
     try:
         email = request.email
         otp = request.otp
@@ -233,7 +307,7 @@ async def verify_otp(
             if not existing_user:
                 raise HTTPException(status_code=400, detail="Email not registered")
 
-            stored_otp = await redis_client.get(f"otp:{existing_user['id']}")
+            stored_otp = await get_redis_value(f"otp:{existing_user['id']}")
             if not stored_otp or stored_otp != otp:
                 raise HTTPException(status_code=400, detail="Invalid OTP")
 
@@ -243,9 +317,9 @@ async def verify_otp(
             )
 
             # Clear OTP from Redis
-            await redis_client.delete(f"otp:{existing_user['id']}")
+            await delete_redis_value(f"otp:{existing_user['id']}")
 
-            token = auth_service.create_token(updated_user)
+            token = jwt_helper.create_token(updated_user)
 
             response = JSONResponse(
                 content={
@@ -317,7 +391,7 @@ async def resend_otp(
             otp_error = None
             try:
 
-                await redis_client.delete(f"otp:{existing_user['id']}")
+                await delete_redis_value(f"otp:{existing_user['id']}")
                 logging.info(f"Resending OTP to: {existing_user['email']}")
                 otp_sent = await send_otp_email(
                     email_to=existing_user["email"],
@@ -362,11 +436,10 @@ async def resend_otp(
     summary="Login with Google",
     description="Login with Google OAuth2.0",
 )
-async def login_google(
-    redirect_uri: str, path: Optional[str] = None, request: Request = None
-):
+async def login_google(request: Request, redirect_uri: str, path: Optional[str] = None):
     auth_service = AuthService()
-    result = await auth_service.login_google(redirect_uri, path, request)
+    safe_path = path if path is not None else ""
+    result = await auth_service.login_google(redirect_uri, safe_path, request)
     return result
 
 
@@ -385,13 +458,13 @@ async def auth_google(
         logging.info(f"Authenticating with Google code: {code}")
         logging.info(f"Authenticating with Google state: {state}")
 
-        redirect_uri = await redis_client.get(f"redirect_uri:{state}")
+        redirect_uri = await get_redis_value(f"redirect_uri:{state}")
         if not redirect_uri:
             raise HTTPException(
                 status_code=400, detail="Invalid or expired state token"
             )
 
-        path = await redis_client.get(f"path:{state}")
+        path = await get_redis_value(f"path:{state}")
         user_info = await auth_service.authenticate_with_google(code, request)
         if not user_info:
             raise HTTPException(
@@ -453,9 +526,9 @@ async def auth_google(
             max_age=3600,
             path="/",
         )
-        await redis_client.delete(f"redirect_uri:{state}")
+        await delete_redis_value(f"redirect_uri:{state}")
         if path:
-            await redis_client.delete(f"path:{state}")
+            await delete_redis_value(f"path:{state}")
 
         return redirect_response
     except HTTPException as e:
@@ -475,8 +548,8 @@ async def auth_google(
 )
 async def get_token(
     request: Request,
-    authorization: Optional[str] = Header(None),
-    token: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(),
+    token: str = Cookie(),
 ):
 
     try:
@@ -490,9 +563,13 @@ async def get_token(
                 status_code=401, content={"message": "Authentication required"}
             )
 
-        payload = jwt.decode(
-            token, GoogleAuth.get_client_secret(), algorithms=["HS256"]
-        )
+        secret = GoogleAuth.get_client_secret()
+        if not secret:
+            return JSONResponse(
+                status_code=401,
+                content={"message": "Authentication secret not configured"},
+            )
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
         user_info = {
             "id": payload.get("sub"),
             "email": payload.get("email"),
