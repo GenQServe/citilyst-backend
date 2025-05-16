@@ -1,20 +1,18 @@
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pathlib import Path
 from dotenv import load_dotenv
 import os
 import logging
 from fastapi_mail.errors import ConnectionErrors
-from pydantic import EmailStr
+from pydantic import EmailStr, SecretStr
 import random
 import redis.asyncio as redis
 import requests
 from helpers.config import settings
 from jinja2 import Template
+from helpers.redis import set_redis_value, get_redis_value, delete_redis_value
 
 load_dotenv()
-
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 
 def render_otp_template(otp_code: str) -> str:
@@ -24,11 +22,11 @@ def render_otp_template(otp_code: str) -> str:
 
 
 config = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("MAIL_USER_NAME"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_FROM=os.getenv("MAIL_FROM"),
-    MAIL_PORT=int(os.getenv("MAIL_PORT", "587")),
-    MAIL_SERVER=os.getenv("MAIL_SERVER"),
+    MAIL_USERNAME=settings.MAIL_USER_NAME or "",
+    MAIL_PASSWORD=settings.MAIL_PASSWORD or SecretStr(""),
+    MAIL_FROM=settings.MAIL_FROM or "",
+    MAIL_PORT=int(settings.MAIL_PORT or 587),
+    MAIL_SERVER=settings.MAIL_SERVER or "",
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=True,
@@ -40,12 +38,12 @@ config = ConnectionConfig(
 async def send_otp_email_async(email_to: EmailStr, user_id: str) -> bool:
     otp_code = str(random.randint(100000, 999999))
     redis_key = f"otp:{user_id}"
-    await redis_client.set(redis_key, otp_code, ex=300)  # Set OTP with 5 minutes expiry
+    await set_redis_value(redis_key, otp_code, ex=300)  # Set OTP with 5 minutes expiry
     message = MessageSchema(
         subject="Your OTP Code",
         recipients=[email_to],
         template_body={"code": otp_code},
-        subtype="html",
+        subtype=MessageType.html,
     )
 
     fm = FastMail(config)
@@ -67,7 +65,7 @@ async def send_email_async(subject: str, email_to: EmailStr, body: dict, templat
         subject=subject,
         recipients=[email_to],
         template_body=body,
-        subtype="html",
+        subtype=MessageType.html,
     )
 
     fm = FastMail(config)
@@ -99,7 +97,7 @@ async def send_otp_email(email_to: EmailStr, user_id: str):
 
     url = "https://onesignal.com/api/v1/notifications"
     headers = {
-        "Authorization": "Basic " + settings.ONESIGNAL_API_KEY,
+        "Authorization": "Basic " + (settings.ONESIGNAL_API_KEY or ""),
         "Content-Type": "application/json",
     }
     otp_html_content = render_otp_template(otp)
@@ -111,7 +109,7 @@ async def send_otp_email(email_to: EmailStr, user_id: str):
         "email_body": otp_html_content,
     }
     try:
-        await redis_client.set(f"otp:{user_id}", otp, ex=300)
+        await set_redis_value(f"otp:{user_id}", otp, ex=300)
 
         response = requests.post(url, headers=headers, json=payload)
         if response.status_code == 200:

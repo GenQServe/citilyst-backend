@@ -10,6 +10,8 @@ import uvicorn
 from helpers import cors, log, rate_limiter, static, router
 from helpers.scheduler import setup as scheduler_setup
 from helpers.db import db_connection
+from helpers.config import settings
+from middleware.rbac_middleware import RBACMiddleware
 
 # Setup logging
 log.setup()
@@ -43,17 +45,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-is_production = (
-    os.getenv("ENVIRONMENT", "development").lower() == "production"
-    or "--production" in sys.argv
-)
 mainport = int(os.getenv("PORT", "8000"))
 if "--port" in sys.argv:
     try:
         mainport = int(sys.argv[sys.argv.index("--port") + 1])
     except (IndexError, ValueError):
         pass
-is_development = not is_production
 
 # Setup Middleware
 rate_limiter.setup(app)
@@ -67,6 +64,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Setup Routes & Static Files
 router.setup(app)
@@ -82,14 +80,16 @@ _ = jobs.__name__
 
 
 def main():
-    print(f"[ENV] Running in {'PRODUCTION' if is_production else 'DEVELOPMENT'} mode")
+    print(
+        f"[ENV] Running in {'PRODUCTION' if settings.is_production else 'DEVELOPMENT'} mode"
+    )
     print(f"[PORT] Listening on port {mainport}")
 
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=mainport,
-        reload=is_development,
+        reload=settings.is_development,
         log_level="info",
     )
 

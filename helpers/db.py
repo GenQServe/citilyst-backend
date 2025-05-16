@@ -42,9 +42,12 @@ logging.info(
     f"Using database: {DATABASE_URL.split('@')[0].split('://')[0]}://*****@*****"
 )
 
+# Add this to disable SQLAlchemy logging at engine creation
+logging.getLogger("sqlalchemy.engine").setLevel(logging.ERROR)
+
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,
+    echo=False,
     pool_pre_ping=True,
     pool_recycle=3600,
     pool_size=5,

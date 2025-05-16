@@ -53,10 +53,10 @@ class User(Base):
     def to_dict(self):
         return {
             "id": self.id,
+            "name": self.name,
             "email": self.email,
             "password": self.password,
             "nik": self.nik,
-            "name": self.name,
             "phone_number": self.phone_number,
             "address": self.address,
             "image_url": self.image_url,

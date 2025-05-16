@@ -61,7 +61,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 token_algo = URLSafeTimedSerializer(
-    settings.JWT_SECRET, salt="Email_Verification_&_Forgot_password"
+    settings.JWT_SECRET or "", salt="Email_Verification_&_Forgot_password"
 )
 
 

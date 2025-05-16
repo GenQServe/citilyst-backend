@@ -1,29 +1,43 @@
+import logging
+import os
+import sys
 from pydantic_settings import BaseSettings
+from pydantic import EmailStr, SecretStr
+
+from typing import Optional
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str
-    PYTHONUNBUFFERED: int
-    ENVIRONTMENT: str
-    REDIS_URL: str
-    DATABASE_URL: str
-    PGDATABASE: str
-    PGHOST: str
-    PGPORT: int
-    PGUSER: str
-    PGPASSWORD: str
-    GOOGLE_CLIENT_ID: str
-    GOOGLE_CLIENT_SECRET: str
-    GOOGLE_REDIRECT_URI: str
-    JWT_SECRET: str
-    MAIL_USER_NAME: str
-    MAIL_PASSWORD: str
-    MAIL_FROM: str
-    MAIL_PORT: int
-    MAIL_SERVER: str
-    ONESIGNAL_APP_ID: str
-    ONESIGNAL_API_KEY: str
-    ONESIGNAL_OTP_TEMPLATE_ID: str
+    PROJECT_NAME: Optional[str] = None
+    PYTHONUNBUFFERED: Optional[int] = None
+    ENVIRONTMENT: str = "development"
+    REDIS_URL: Optional[str] = None
+    DATABASE_URL: Optional[str] = None
+    PGDATABASE: Optional[str] = None
+    PGHOST: Optional[str] = None
+    PGPORT: Optional[int] = None
+    PGUSER: Optional[str] = None
+    PGPASSWORD: Optional[str] = None
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: Optional[str] = None
+    JWT_SECRET: Optional[str] = None
+    MAIL_USER_NAME: Optional[str] = None
+    MAIL_PASSWORD: Optional[SecretStr] = None
+    MAIL_FROM: Optional[str] = None
+    MAIL_PORT: Optional[int] = None
+    MAIL_SERVER: Optional[str] = None
+    ONESIGNAL_APP_ID: Optional[str] = None
+    ONESIGNAL_API_KEY: Optional[str] = None
+    ONESIGNAL_OTP_TEMPLATE_ID: Optional[str] = None
+
+    def is_production(self) -> bool:
+        env = self.ENVIRONTMENT.lower()
+        logging.info(f"[ENV] Environment: {env}")
+        return env == "production" or env == "prod" or "--production" in sys.argv
+
+    def is_development(self) -> bool:
+        return not self.is_production()
 
     class Config:
         env_file = ".env"
