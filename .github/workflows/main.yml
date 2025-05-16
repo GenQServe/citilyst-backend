@@ -46,7 +46,7 @@ jobs:
           cat > .env << EOF
           PYTHONUNBUFFERED=1
           PROJECT_NAME=${{ secrets.PROJECT_NAME }}
-          ENVIRONMENT=${{ secrets.ENVIRONMENT }}
+          ENVIRONTMENT=${{ secrets.ENVIRONMENT }}
           DATABASE_URL=${{ secrets.DATABASE_URL }}
           PGDATABASE=${{ secrets.PGDATABASE }}
           PGPORT=${{ secrets.PGPORT }}
