@@ -45,6 +45,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
                 "/auth/verify-otp",
                 "/auth/resend-otp",
                 "/auth/me",
+                "/feedback-user",
             ]
         )
 

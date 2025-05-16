@@ -7,7 +7,7 @@ class UserBase(BaseModel):
     email: EmailStr
     password: str
     nik: str
-    redirect_url: str
+    # redirect_url: str
 
 
 class UserCreate(UserBase):

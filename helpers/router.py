@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from middleware.rbac_middleware import RBACMiddleware
 from routes.auth import routes_auth
 from routes.users import routes_user
+from routes.feedback_user import routes_feedback_user
 from helpers.config import settings
 
 
@@ -13,6 +14,7 @@ def setup(app: FastAPI):
         jwt_secret=settings.JWT_SECRET or "",
         allowed_paths=[
             f"{prefix}/auth/*",
+            f"{prefix}/feedback-user/*",
             f"{prefix}/docs",
             f"{prefix}/redoc",
             f"{prefix}/openapi.json",
@@ -22,3 +24,4 @@ def setup(app: FastAPI):
     app.include_router(routes_auth, prefix=prefix)
     app.include_router(routes_auth, prefix=prefix)
     app.include_router(routes_user, prefix=prefix)
+    app.include_router(routes_feedback_user, prefix=prefix)

@@ -22,7 +22,7 @@ async def get_user_by_id(
     user_id: str,
     token: str = Cookie(None),
     db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_role(["admin"])),
+    _: bool = Depends(verify_role(["admin", "user"])),
 ) -> JSONResponse:
     """
     Get user profile by id
