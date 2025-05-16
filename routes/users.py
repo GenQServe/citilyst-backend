@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from services.users import UserService
 from sqlalchemy.ext.asyncio import AsyncSession
+from schemas.users import UserCreate, UserUpdate
 from helpers.redis import (
     get_redis_client,
     set_redis_value,
@@ -22,7 +23,7 @@ async def get_user_by_id(
     user_id: str,
     token: str = Cookie(None),
     db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_role(["admin", "user"])),
+    _: bool = Depends(verify_role(["admin"])),
 ) -> JSONResponse:
     """
     Get user profile by id
@@ -39,3 +40,38 @@ async def get_user_by_id(
         )
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+
+
+@routes_user.put(
+    "/{user_id}",
+    response_model=dict,
+    summary="Update user profile",
+)
+async def update_user(
+    user_id: str,
+    user: UserUpdate,
+    token: str = Cookie(None),
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_role(["admin", "user"])),
+) -> JSONResponse:
+    """
+    Update user profile
+    """
+    try:
+        user_service = UserService()
+        user_dict = user.dict(exclude_unset=True)
+        updated_user = await user_service.update_user(db, user_id, user_dict)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "User profile updated successfully",
+                "data": jsonable_encoder(updated_user),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Internal server error"},
+        )
