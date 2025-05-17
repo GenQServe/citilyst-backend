@@ -63,6 +63,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # allow http://localhost:3000 for local development
+    expose_headers=["X-Total-Count"],
 )
 
 

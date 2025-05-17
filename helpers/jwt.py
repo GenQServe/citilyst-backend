@@ -30,12 +30,10 @@ class JwtHelper:
                 "sub": user_data.get("id"),
                 "email": user_data.get("email"),
                 "name": user_data.get("name"),
-                # "picture": user_data.get("picture"),
-                # "phone": user_data.get("phone"),
-                # "address": user_data.get("address"),
-                "is_verified": user_data.get("is_verified"),
+                "image_url": user_data.get("image_url"),
+                "is_verified": user_data.get("is_verified", False),
                 "role": user_data.get("role"),
-                "exp": datetime.now(timezone.utc) + timedelta(days=1),
+                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
             }
             access_token = self.encode(payload)
             return access_token
