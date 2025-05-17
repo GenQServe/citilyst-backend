@@ -519,9 +519,10 @@ async def auth_google(
             )
             user_info["id"] = updated_user["id"]
             user_info["name"] = updated_user["name"]
-            user_info["picture"] = updated_user["image_url"]
+            user_info["image_url"] = updated_user["image_url"]
             user_info["is_verified"] = updated_user["is_verified"]
             user_info["nik"] = updated_user["nik"]
+            user_info["role"] = updated_user["role"]
         else:
             logging.info(f"Creating new user: {user_info['email']}")
             create_data = {
@@ -532,10 +533,10 @@ async def auth_google(
             created_user = await user_service.create_user(db, create_data)
             user_info["id"] = created_user["id"]
             user_info["name"] = created_user["name"]
-            user_info["picture"] = created_user["image_url"]
+            user_info["image_url"] = created_user["image_url"]
             user_info["is_verified"] = created_user["is_verified"]
             user_info["nik"] = created_user["nik"]
-
+            user_info["role"] = created_user["role"]
         token = jwt_helper.create_token(user_info)
         frontend_url = redirect_uri
 
@@ -543,7 +544,7 @@ async def auth_google(
             user_info.get("name")
             and user_info.get("email")
             and user_info.get("is_verified") is True
-            and user_info.get("nik")
+            and user_info.get("nik") is not None
         )
 
         custom_path = "/"
@@ -560,8 +561,6 @@ async def auth_google(
                 frontend_url += "/" + custom_path
             else:
                 frontend_url += custom_path
-
-        print(f"Frontend URL: {frontend_url}")
         redirect_response = RedirectResponse(url=frontend_url)
         redirect_response.set_cookie(
             key="token",
