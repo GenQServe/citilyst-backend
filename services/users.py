@@ -161,6 +161,9 @@ class UserService:
             await db.delete(user)
             await db.commit()
             return {"message": "User deleted successfully"}
+        except HTTPException as e:
+            logging.error(f"Error deleting user: {str(e)}")
+            raise e
         except Exception as e:
             logging.error(f"Error deleting user: {str(e)}")
             raise HTTPException(
