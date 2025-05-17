@@ -160,8 +160,8 @@ async def login(
             key="token",
             value=token,
             httponly=False,
-            secure=True,
-            samesite="none",
+            secure=False,
+            samesite="lax",
             max_age=3600,
             path="/",
         )
@@ -341,8 +341,8 @@ async def verify_otp(
                 key="token",
                 value=token,
                 httponly=False,
-                secure=True,
-                samesite="none",
+                secure=False,
+                samesite="lax",
                 max_age=3600,
                 path="/",
             )
@@ -566,8 +566,8 @@ async def auth_google(
             key="token",
             value=token,
             httponly=False,
-            secure=True,
-            samesite="none",
+            secure=False,
+            samesite="lax",
             max_age=3600,
             path="/",
         )
