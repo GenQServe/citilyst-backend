@@ -75,3 +75,33 @@ async def update_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": "Internal server error"},
         )
+
+
+@routes_user.delete(
+    "/{user_id}",
+    response_model=dict,
+    summary="Delete user by id",
+)
+async def delete_user(
+    user_id: str,
+    token: str = Cookie(None),
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_role(["admin"])),
+) -> JSONResponse:
+    """
+    Delete user by id
+    """
+    try:
+        user_service = UserService()
+        await user_service.delete_user(db, user_id)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "User deleted successfully"},
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Internal server error"},
+        )
