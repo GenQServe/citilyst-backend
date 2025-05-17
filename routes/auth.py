@@ -437,10 +437,33 @@ async def resend_otp(
     description="Login with Google OAuth2.0",
 )
 async def login_google(request: Request, redirect_uri: str, path: Optional[str] = None):
-    auth_service = AuthService()
-    safe_path = path if path is not None else ""
-    result = await auth_service.login_google(redirect_uri, safe_path, request)
-    return result
+    try:
+        auth_service = AuthService()
+        safe_path = path if path is not None else ""
+        result = await auth_service.login_google(redirect_uri, safe_path, request)
+        return result
+    except HTTPException as e:
+        logging.error(f"Login with Google error: {e.status_code}: {e.detail}")
+        if e.status_code == 400:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"message": str(e.detail)},
+            )
+        elif e.status_code == 500:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"message": "Internal server error"},
+            )
+        return JSONResponse(
+            status_code=e.status_code,
+            content={"message": str(e.detail)},
+        )
+    except Exception as e:
+        logging.error(f"Login with Google error: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Internal server error"},
+        )
 
 
 @routes_auth.get("/google/callback")
@@ -457,6 +480,9 @@ async def auth_google(
         jwt_helper = JwtHelper()
         logging.info(f"Authenticating with Google code: {code}")
         logging.info(f"Authenticating with Google state: {state}")
+        logging.info(
+            f"Authenticating with Google request url: {request.headers.get('origin')}"
+        )
 
         redirect_uri = await get_redis_value(f"redirect_uri:{state}")
         if not redirect_uri:
@@ -494,6 +520,8 @@ async def auth_google(
             user_info["id"] = updated_user["id"]
             user_info["name"] = updated_user["name"]
             user_info["picture"] = updated_user["image_url"]
+            user_info["is_verified"] = updated_user["is_verified"]
+            user_info["nik"] = updated_user["nik"]
         else:
             logging.info(f"Creating new user: {user_info['email']}")
             create_data = {
@@ -505,18 +533,36 @@ async def auth_google(
             user_info["id"] = created_user["id"]
             user_info["name"] = created_user["name"]
             user_info["picture"] = created_user["image_url"]
+            user_info["is_verified"] = created_user["is_verified"]
+            user_info["nik"] = created_user["nik"]
+
         token = jwt_helper.create_token(user_info)
         frontend_url = redirect_uri
 
-        # if path:
-        #     if not frontend_url.endswith("/") and not path.startswith("/"):
-        #         frontend_url += "/"
-        #     elif frontend_url.endswith("/") and path.startswith("/"):
-        #         path = path[1:]
+        is_profile_complete = (
+            user_info.get("name")
+            and user_info.get("email")
+            and user_info.get("is_verified") is True
+            and user_info.get("nik")
+        )
 
-        frontend_url += "/" if user_info.get("is_verified") == True else "/profile"
+        custom_path = "/"
+        if not is_profile_complete:
+            custom_path = "/profile"
+
+        if frontend_url.endswith("/"):
+            if custom_path.startswith("/"):
+                frontend_url += custom_path[1:]
+            else:
+                frontend_url += custom_path
+        else:
+            if not custom_path.startswith("/"):
+                frontend_url += "/" + custom_path
+            else:
+                frontend_url += custom_path
+
+        print(f"Frontend URL: {frontend_url}")
         redirect_response = RedirectResponse(url=frontend_url)
-
         redirect_response.set_cookie(
             key="token",
             value=token,
