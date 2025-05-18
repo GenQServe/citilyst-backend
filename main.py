@@ -61,21 +61,6 @@ allowed_origins = [
     "http://localhost:5173",
     "https://citilyst.rekrutgenai.com",
 ]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-    ],
-    expose_headers=["Content-Length", "Content-Type"],
-    max_age=600,
-)
 
 prefix = "/v1"
 
