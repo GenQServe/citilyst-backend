@@ -56,15 +56,13 @@ if "--port" in sys.argv:
 rate_limiter.setup(app)
 cors.setup(app)
 
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+# allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins="*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    # allow http://localhost:3000 for local development
-    expose_headers=["X-Total-Count"],
 )
 
 
