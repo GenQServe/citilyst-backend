@@ -163,7 +163,6 @@ async def login(
             secure=False,
             samesite="lax",
             max_age=3600,
-            domain=request.headers.get("origin"),
             path="/",
         )
         return response
@@ -345,7 +344,6 @@ async def verify_otp(
                 secure=False,
                 samesite="lax",
                 max_age=3600,
-                domain=request.headers.get("origin"),
                 path="/",
             )
             return response
@@ -571,7 +569,6 @@ async def auth_google(
             secure=False,
             samesite="lax",
             max_age=3600,
-            domain=request.headers.get("origin"),
             path="/",
         )
         await delete_redis_value(f"redirect_uri:{state}")
