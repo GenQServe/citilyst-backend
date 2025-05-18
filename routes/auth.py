@@ -62,7 +62,6 @@ async def get_user_info(
                 status_code=401, content={"message": "Authentication required"}
             )
 
-        # Decode token menggunakan jwt_helper yang sudah memiliki secret key
         payload = jwt_helper.decode(token_value)
         user_info = {
             "id": payload.get("sub"),
