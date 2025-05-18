@@ -59,7 +59,6 @@ async def update_user(
     user: UserUpdate,
     token: Annotated[str, Depends(oauth2_scheme)],
     db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_role(["admin", "user"])),
 ) -> JSONResponse:
     """
     Update user profile
