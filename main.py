@@ -56,7 +56,11 @@ if "--port" in sys.argv:
 rate_limiter.setup(app)
 cors.setup(app)
 
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+# allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+allowed_origins = [
+    "http://localhost:5173",
+    "https://citilyst.rekrutgenai.com",
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
