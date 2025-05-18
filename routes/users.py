@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from services.users import UserService
 from sqlalchemy.ext.asyncio import AsyncSession
 from schemas.users import UserCreate, UserUpdate
-from typing import List, Optional
+from typing import List, Optional, Annotated
 from fastapi import UploadFile
 from fastapi.responses import JSONResponse
 from helpers.redis import (
@@ -91,8 +91,8 @@ async def update_user(
 async def update_user_profile_picture(
     request: Request,
     user_id: str,
-    file: UploadFile = File(...),
     token: Annotated[str, Depends(oauth2_scheme)],
+    file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     _: bool = Depends(verify_role(["admin", "user"])),
 ) -> JSONResponse:
