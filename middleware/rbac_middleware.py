@@ -1,6 +1,8 @@
 import logging
 from typing import List, Callable, Optional
 from functools import wraps
+import time
+from datetime import datetime
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from jose import jwt, JWTError
@@ -82,6 +84,44 @@ class RBACMiddleware(BaseHTTPMiddleware):
             # Decode token
             payload = jwt.decode(token, self.jwt_secret, algorithms=["HS256"])
 
+            # Check if token is expired
+            exp_timestamp = payload.get("exp")
+            if not exp_timestamp:
+                return JSONResponse(
+                    status_code=401,
+                    content={"message": "Invalid token: missing expiration time."},
+                )
+
+            current_timestamp = int(time.time())
+            if current_timestamp > exp_timestamp:
+                # Calculate how long ago the token expired
+                expired_seconds = current_timestamp - exp_timestamp
+                expired_minutes = expired_seconds // 60
+
+                if expired_minutes < 60:
+                    time_ago = (
+                        f"{expired_minutes} minute{'s' if expired_minutes != 1 else ''}"
+                    )
+                else:
+                    expired_hours = expired_minutes // 60
+                    if expired_hours < 24:
+                        time_ago = (
+                            f"{expired_hours} hour{'s' if expired_hours != 1 else ''}"
+                        )
+                    else:
+                        expired_days = expired_hours // 24
+                        time_ago = (
+                            f"{expired_days} day{'s' if expired_days != 1 else ''}"
+                        )
+
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "message": f"Authentication token expired {time_ago} ago. Please login again.",
+                        "code": "token_expired",
+                    },
+                )
+
             # Extract role from payload
             role = payload.get(self.roles_field, "").lower()
 
@@ -102,7 +142,8 @@ class RBACMiddleware(BaseHTTPMiddleware):
                 "role": role,
                 "image_url": payload.get("image_url"),
                 "is_verified": payload.get("is_verified", False),
-                "exp": payload.get("exp"),
+                "exp": exp_timestamp,
+                "token_expiration": datetime.fromtimestamp(exp_timestamp).isoformat(),
             }
 
             # Continue with the request

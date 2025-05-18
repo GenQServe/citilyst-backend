@@ -65,10 +65,32 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+    ],
+    expose_headers=["Content-Length", "Content-Type"],
+    max_age=600,
 )
 
+prefix = "/v1"
+
+app.add_middleware(
+    RBACMiddleware,
+    jwt_secret=settings.JWT_SECRET,
+    allowed_paths=[
+        f"{prefix}/auth/*",
+        f"{prefix}/feedback-user/*",
+        f"{prefix}/docs",
+        f"{prefix}/redoc",
+        f"{prefix}/openapi.json",
+        f"{prefix}/health",
+    ],
+)
 
 # Setup Routes & Static Files
 router.setup(app)
