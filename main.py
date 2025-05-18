@@ -62,21 +62,6 @@ allowed_origins = [
     "https://citilyst.rekrutgenai.com",
 ]
 
-prefix = "/v1"
-
-app.add_middleware(
-    RBACMiddleware,
-    jwt_secret=settings.JWT_SECRET,
-    allowed_paths=[
-        f"{prefix}/auth/*",
-        f"{prefix}/feedback-user/*",
-        f"{prefix}/docs",
-        f"{prefix}/redoc",
-        f"{prefix}/openapi.json",
-        f"{prefix}/health",
-    ],
-)
-
 # Setup Routes & Static Files
 router.setup(app)
 static.setup(app)
