@@ -52,6 +52,7 @@ async def get_user_by_id(
     summary="Update user profile",
 )
 async def update_user(
+    request: Request,
     user_id: str,
     user: UserUpdate,
     token: str = Cookie(None),
