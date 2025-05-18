@@ -2,6 +2,7 @@ from helpers.config import settings
 import redis.asyncio as redis
 import logging
 from fastapi import Cookie, HTTPException, Request, Depends, status, APIRouter, File
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from services.users import UserService
