@@ -42,7 +42,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 )
 async def get_user_info(
     request: Request,
-    token: str = Cookie(None),
+    token: str = Cookie(None, strict=False),
     db: AsyncSession = Depends(get_db),
 ):
     auth_service = AuthService()
@@ -145,27 +145,9 @@ async def login(
             content={
                 "message": "Login successful",
                 "data": {
-                    "id": user["id"],
-                    "email": user["email"],
-                    "name": user["name"],
-                    "picture": user["image_url"],
-                    "phone_number": user["phone_number"],
-                    "address": user["address"],
-                    "nik": user["nik"],
-                    "is_verified": user["is_verified"],
-                    "role": user["role"],
+                    "token": token,
                 },
             }
-        )
-        response.set_cookie(
-            key="token",
-            value=token,
-            httponly=False,
-            secure=False,
-            samesite="lax",
-            domain=request.url.hostname,
-            max_age=3600,
-            path="/",
         )
         return response
     except HTTPException as e:
@@ -328,28 +310,11 @@ async def verify_otp(
                 content={
                     "message": "OTP verified successfully",
                     "data": {
-                        "id": updated_user["id"],
-                        "email": updated_user["email"],
-                        "name": updated_user["name"],
-                        "picture": updated_user["image_url"],
-                        "phone_number": updated_user["phone_number"],
-                        "address": updated_user["address"],
-                        "nik": updated_user["nik"],
-                        "is_verified": updated_user["is_verified"],
+                        "token": token,
                     },
                 }
             )
 
-            response.set_cookie(
-                key="token",
-                value=token,
-                httponly=False,
-                secure=False,
-                samesite="lax",
-                max_age=3600,
-                domain=request.url.hostname,
-                path="/",
-            )
             return response
         except HTTPException as e:
             logging.error(f"Verify OTP error: {e.status_code}: {e.detail}")
@@ -551,31 +516,22 @@ async def auth_google(
             and user_info.get("nik") is not None
         )
 
-        custom_path = "/"
-        if not is_profile_complete:
-            custom_path = "/profile"
+        # custom_path = "/"
+        # if not is_profile_complete:
+        #     custom_path = "/profile"
 
-        if frontend_url.endswith("/"):
-            if custom_path.startswith("/"):
-                frontend_url += custom_path[1:]
-            else:
-                frontend_url += custom_path
-        else:
-            if not custom_path.startswith("/"):
-                frontend_url += "/" + custom_path
-            else:
-                frontend_url += custom_path
-        redirect_response = RedirectResponse(url=frontend_url)
-        redirect_response.set_cookie(
-            key="token",
-            value=token,
-            httponly=False,
-            secure=False,
-            samesite="lax",
-            max_age=3600,
-            domain=request.url.hostname,
-            path="/",
-        )
+        # if frontend_url.endswith("/"):
+        #     if custom_path.startswith("/"):
+        #         frontend_url += custom_path[1:]
+        #     else:
+        #         frontend_url += custom_path
+        # else:
+        #     if not custom_path.startswith("/"):
+        #         frontend_url += "/" + custom_path
+        #     else:
+        #         frontend_url += custom_path
+        redirect_response = RedirectResponse(url=f"{frontend_url}?token={token}")
+
         await delete_redis_value(f"redirect_uri:{state}")
         if path:
             await delete_redis_value(f"path:{state}")
