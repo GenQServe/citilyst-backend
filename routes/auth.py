@@ -530,7 +530,7 @@ async def auth_google(
         #         frontend_url += "/" + custom_path
         #     else:
         #         frontend_url += custom_path
-        redirect_response = RedirectResponse(url=f"{frontend_url}/home?token={token}")
+        redirect_response = RedirectResponse(url=f"{frontend_url}home?token={token}")
 
         await delete_redis_value(f"redirect_uri:{state}")
         if path:
