@@ -53,8 +53,8 @@ if "--port" in sys.argv:
         pass
 
 # Setup Middleware
-rate_limiter.setup(app)
 cors.setup(app)
+rate_limiter.setup(app)
 
 # Setup Routes & Static Files
 router.setup(app)

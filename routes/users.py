@@ -94,7 +94,6 @@ async def update_user_profile_picture(
     token: Annotated[str, Depends(oauth2_scheme)],
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_role(["admin", "user"])),
 ) -> JSONResponse:
     """
     Update user profile picture
