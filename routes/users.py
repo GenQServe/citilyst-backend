@@ -20,12 +20,13 @@ from helpers.db import get_db
 from middleware.rbac_middleware import verify_role
 
 routes_user = APIRouter(prefix="/user", tags=["User"])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 @routes_user.get("/{user_id}", response_model=dict, summary="Get user profile by id")
 async def get_user_by_id(
     user_id: str,
-    token: str = Cookie(None),
+    token: Annotated[str, Depends(oauth2_scheme)],
     db: AsyncSession = Depends(get_db),
     _: bool = Depends(verify_role(["admin"])),
 ) -> JSONResponse:
@@ -55,7 +56,7 @@ async def update_user(
     request: Request,
     user_id: str,
     user: UserUpdate,
-    token: str = Cookie(None),
+    token: Annotated[str, Depends(oauth2_scheme)],
     db: AsyncSession = Depends(get_db),
     _: bool = Depends(verify_role(["admin", "user"])),
 ) -> JSONResponse:
@@ -91,7 +92,7 @@ async def update_user_profile_picture(
     request: Request,
     user_id: str,
     file: UploadFile = File(...),
-    token: str = Cookie(None),
+    token: Annotated[str, Depends(oauth2_scheme)],
     db: AsyncSession = Depends(get_db),
     _: bool = Depends(verify_role(["admin", "user"])),
 ) -> JSONResponse:
@@ -126,7 +127,7 @@ async def update_user_profile_picture(
 async def delete_user(
     request: Request,
     user_id: str,
-    token: str = Cookie(None),
+    token: Annotated[str, Depends(oauth2_scheme)],
     db: AsyncSession = Depends(get_db),
     _: bool = Depends(verify_role(["admin"])),
 ) -> JSONResponse:
