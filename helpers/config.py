@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     MAIL_USER_NAME: Optional[str] = None
     MAIL_PASSWORD: Optional[SecretStr] = None
     MAIL_FROM: Optional[str] = None
+    CLOUDINARY_CLOUD_NAME: Optional[str] = None
+    CLOUDINARY_API_KEY: Optional[str] = None
+    CLOUDINARY_API_SECRET: Optional[str] = None
     MAIL_PORT: Optional[int] = None
     MAIL_SERVER: Optional[str] = None
     ONESIGNAL_APP_ID: Optional[str] = None

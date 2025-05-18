@@ -1,11 +1,15 @@
 from helpers.config import settings
 import redis.asyncio as redis
-from fastapi import Cookie, HTTPException, Request, Depends, status, APIRouter
+import logging
+from fastapi import Cookie, HTTPException, Request, Depends, status, APIRouter, File
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from services.users import UserService
 from sqlalchemy.ext.asyncio import AsyncSession
 from schemas.users import UserCreate, UserUpdate
+from typing import List, Optional
+from fastapi import UploadFile
+from fastapi.responses import JSONResponse
 from helpers.redis import (
     get_redis_client,
     set_redis_value,
@@ -71,6 +75,41 @@ async def update_user(
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"message": e.detail})
     except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Internal server error"},
+        )
+
+
+@routes_user.put(
+    "/{user_id}/profile-picture",
+    response_model=dict,
+    summary="Update user profile picture",
+)
+async def update_user_profile_picture(
+    user_id: str,
+    file: UploadFile = File(...),
+    token: str = Cookie(None),
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_role(["admin", "user"])),
+) -> JSONResponse:
+    """
+    Update user profile picture
+    """
+    try:
+        user_service = UserService()
+        updated_user = await user_service.update_user_profile_picture(db, user_id, file)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "User profile picture updated successfully",
+                "data": jsonable_encoder(updated_user),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error updating user profile picture: {str(e)}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": "Internal server error"},

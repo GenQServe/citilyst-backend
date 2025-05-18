@@ -6,7 +6,7 @@ import redis.asyncio as redis  # Make sure this is the async version
 import requests
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
-from fastapi import HTTPException
+from fastapi import HTTPException, File
 from helpers.common import hash_password
 from helpers.google_auth import GoogleAuth
 from typing import List, Optional
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from sqlalchemy.future import select
 from helpers.redis import set_redis_value, get_redis_value, delete_redis_value
+from helpers.cloudinary import upload_image, delete_image
 
 from schemas.users import UserCreate
 
@@ -66,7 +67,6 @@ class UserService:
                 status_code=500, detail=f"Failed to get users: {str(e)}"
             )
 
-    # verify password
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         try:
             print(f"Verifying password: {plain_password} against {hashed_password}")
@@ -151,6 +151,30 @@ class UserService:
             raise HTTPException(
                 status_code=500, detail=f"Failed to update user: {str(e)}"
             )
+
+    async def update_user_profile_picture(
+        self, db: AsyncSession, user_id: str, picture: File
+    ) -> dict:
+        try:
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalars().first()
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+            # Upload new image to Cloudinary
+            upload_result = await upload_image(picture)
+            if not upload_result:
+                raise HTTPException(
+                    status_code=500, detail="Failed to upload image to Cloudinary"
+                )
+            # Update user image URL
+            user.image_url = upload_result.get("secure_url")
+            await db.commit()
+            await db.refresh(user)
+            user_dict = user.to_dict()
+            return user_dict
+        except Exception as e:
+            logging.error(f"Error updating user profile picture: {str(e)}")
+            raise Exception(f"Failed to update user profile picture: {str(e)}")
 
     async def delete_user(self, db: AsyncSession, user_id: str) -> dict:
         try:

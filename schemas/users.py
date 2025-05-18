@@ -1,6 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from fastapi import UploadFile, File
 
 
 class UserBase(BaseModel):
@@ -18,11 +19,9 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
-    password: Optional[str] = None
     nik: Optional[str] = None
     phone_number: Optional[str] = None
     address: Optional[str] = None
-    image_url: Optional[str] = None
 
 
 class UserLogin(BaseModel):

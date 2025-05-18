@@ -96,7 +96,9 @@ class RBACMiddleware(BaseHTTPMiddleware):
                 "email": payload.get("email"),
                 "name": payload.get("name"),
                 "role": role,
-                # Add more user info from payload if needed
+                "image_url": payload.get("image_url"),
+                "is_verified": payload.get("is_verified", False),
+                "exp": payload.get("exp"),
             }
 
             # Continue with the request
