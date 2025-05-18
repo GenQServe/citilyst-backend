@@ -11,7 +11,7 @@ def setup(app: FastAPI):
     # * RBAC Middleware
     app.add_middleware(
         RBACMiddleware,
-        jwt_secret=settings.JWT_SECRET or "",
+        jwt_secret=settings.JWT_SECRET,
         allowed_paths=[
             f"{prefix}/auth/*",
             f"{prefix}/feedback-user/*",
