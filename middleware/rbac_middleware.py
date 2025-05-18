@@ -14,7 +14,6 @@ class RBACMiddleware(BaseHTTPMiddleware):
         app: ASGIApp,
         jwt_secret: str,
         allowed_paths: Optional[List[str]] = None,
-        auth_cookie_name: str = "token",
         roles_field: str = "role",
     ):
         """
@@ -24,13 +23,11 @@ class RBACMiddleware(BaseHTTPMiddleware):
             app: The ASGI application
             jwt_secret: Secret key for JWT decoding
             allowed_paths: Paths that don't require authentication
-            auth_cookie_name: Name of the cookie containing the token
             roles_field: Field name in JWT payload that contains roles
         """
         super().__init__(app)
         self.jwt_secret = jwt_secret
         self.allowed_paths = allowed_paths or []
-        self.auth_cookie_name = auth_cookie_name
         self.roles_field = roles_field
 
         # Add default public paths
@@ -47,6 +44,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
                 "/auth/resend-otp",
                 "/auth/me",
                 "/feedback-user",
+                "/static/*",  # Allow access to static files
             ]
         )
 
@@ -70,11 +68,14 @@ class RBACMiddleware(BaseHTTPMiddleware):
         if self._is_path_allowed(path):
             return await call_next(request)
 
-        # Get token from multiple sources
+        # Get token from Authorization header
         token = self._extract_token(request)
         if not token:
             return JSONResponse(
-                status_code=401, content={"message": "Authentication required"}
+                status_code=401,
+                content={
+                    "message": "Authentication required. Please provide a valid Bearer token."
+                },
             )
 
         try:
@@ -87,7 +88,10 @@ class RBACMiddleware(BaseHTTPMiddleware):
             # Check if role is valid
             if not role or (role != "user" and role != "admin"):
                 return JSONResponse(
-                    status_code=403, content={"message": "Insufficient permissions"}
+                    status_code=403,
+                    content={
+                        "message": f"Insufficient permissions. Role '{role}' is not authorized."
+                    },
                 )
 
             # Add user info to request state
@@ -107,7 +111,10 @@ class RBACMiddleware(BaseHTTPMiddleware):
         except JWTError as e:
             logging.error(f"JWT decode error: {str(e)}")
             return JSONResponse(
-                status_code=401, content={"message": "Invalid authentication token"}
+                status_code=401,
+                content={
+                    "message": "Invalid authentication token. Please provide a valid Bearer token."
+                },
             )
         except Exception as e:
             logging.error(f"RBAC middleware error: {str(e)}")
@@ -117,7 +124,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
 
     def _extract_token(self, request: Request) -> Optional[str]:
         """
-        Extract token from request (cookie or Authorization header)
+        Extract token from Authorization header only
 
         Args:
             request: The request object
@@ -125,17 +132,13 @@ class RBACMiddleware(BaseHTTPMiddleware):
         Returns:
             Optional[str]: The token if found, None otherwise
         """
-        # Try to get from cookie first
-        token = request.cookies.get(self.auth_cookie_name)
-        if token:
-            return token
-
-        # Try to get from Authorization header
+        # Get from Authorization header
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
-            return auth_header[7:]  # Remove 'Bearer ' prefix
+            return auth_header[
+                7:
+            ].strip()  # Remove 'Bearer ' prefix and trim whitespace
 
-        # If we reach here, no token was found
         return None
 
     def _is_path_allowed(self, path: str) -> bool:
@@ -172,12 +175,18 @@ class RoleChecker:
             user = getattr(request.state, "user", None)
 
             if not user:
-                raise HTTPException(status_code=401, detail="Authentication required")
+                raise HTTPException(
+                    status_code=401,
+                    detail="Authentication required. Please provide a valid Bearer token.",
+                )
 
             user_role = user.get("role", "").lower()
 
             if user_role not in self.roles:
-                raise HTTPException(status_code=403, detail="Insufficient permissions")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Insufficient permissions. Role '{user_role}' is not allowed to access this resource.",
+                )
 
             return await func(request, *args, **kwargs)
 
@@ -201,7 +210,10 @@ def requires_role(roles: List[str]):
             user = getattr(request.state, "user", None)
 
             if not user:
-                raise HTTPException(status_code=401, detail="Authentication required")
+                raise HTTPException(
+                    status_code=401,
+                    detail="Authentication required. Please provide a valid Bearer token.",
+                )
 
             user_role = user.get("role", "").lower()
 
@@ -234,7 +246,10 @@ def verify_role(required_roles: List[str]):
         user = getattr(request.state, "user", None)
 
         if not user:
-            raise HTTPException(status_code=401, detail="Authentication required")
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication required. Please provide a valid Bearer token.",
+            )
 
         user_role = user.get("role", "").lower()
 
