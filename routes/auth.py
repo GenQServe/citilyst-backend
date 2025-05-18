@@ -159,9 +159,9 @@ async def login(
         response.set_cookie(
             key="token",
             value=token,
-            httponly=False,
+            httponly=True,
             secure=False,
-            samesite="lax",
+            samesite="none",
             max_age=3600,
             path="/",
         )
@@ -340,9 +340,9 @@ async def verify_otp(
             response.set_cookie(
                 key="token",
                 value=token,
-                httponly=False,
+                httponly=True,
                 secure=False,
-                samesite="lax",
+                samesite="none",
                 max_age=3600,
                 path="/",
             )
@@ -565,9 +565,9 @@ async def auth_google(
         redirect_response.set_cookie(
             key="token",
             value=token,
-            httponly=False,
+            httponly=True,
             secure=False,
-            samesite="lax",
+            samesite="none",
             max_age=3600,
             path="/",
         )
