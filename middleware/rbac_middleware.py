@@ -1,5 +1,6 @@
 import logging
 from typing import List, Callable, Optional
+from functools import wraps
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from jose import jwt, JWTError
@@ -69,8 +70,8 @@ class RBACMiddleware(BaseHTTPMiddleware):
         if self._is_path_allowed(path):
             return await call_next(request)
 
-        # Get token from cookie
-        token = request.cookies.get(self.auth_cookie_name)
+        # Get token from multiple sources
+        token = self._extract_token(request)
         if not token:
             return JSONResponse(
                 status_code=401, content={"message": "Authentication required"}
@@ -95,6 +96,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
                 "email": payload.get("email"),
                 "name": payload.get("name"),
                 "role": role,
+                # Add more user info from payload if needed
             }
 
             # Continue with the request
@@ -110,6 +112,29 @@ class RBACMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=500, content={"message": "Internal server error"}
             )
+
+    def _extract_token(self, request: Request) -> Optional[str]:
+        """
+        Extract token from request (cookie or Authorization header)
+
+        Args:
+            request: The request object
+
+        Returns:
+            Optional[str]: The token if found, None otherwise
+        """
+        # Try to get from cookie first
+        token = request.cookies.get(self.auth_cookie_name)
+        if token:
+            return token
+
+        # Try to get from Authorization header
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            return auth_header[7:]  # Remove 'Bearer ' prefix
+
+        # If we reach here, no token was found
+        return None
 
     def _is_path_allowed(self, path: str) -> bool:
         """Check if path is in allowed paths list"""
@@ -140,6 +165,7 @@ class RoleChecker:
         self.roles = [role.lower() for role in roles]
 
     def __call__(self, func: Callable) -> Callable:
+        @wraps(func)  # Preserve original function signature
         async def wrapper(request: Request, *args, **kwargs):
             user = getattr(request.state, "user", None)
 
@@ -168,6 +194,7 @@ def requires_role(roles: List[str]):
     """
 
     def decorator(func: Callable) -> Callable:
+        @wraps(func)  # Preserve original function signature
         async def wrapper(request: Request, *args, **kwargs):
             user = getattr(request.state, "user", None)
 
@@ -177,7 +204,10 @@ def requires_role(roles: List[str]):
             user_role = user.get("role", "").lower()
 
             if user_role not in [role.lower() for role in roles]:
-                raise HTTPException(status_code=403, detail="Insufficient permissions")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Insufficient permissions. Required role: {', '.join(roles)}",
+                )
 
             return await func(request, *args, **kwargs)
 

@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from typing import Optional, Union
+from typing import Optional, Union, Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.params import Cookie, Header
@@ -31,7 +31,7 @@ is_production = (
 )
 
 routes_auth = APIRouter(prefix="/auth", tags=["Auth"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 @routes_auth.get(
@@ -42,7 +42,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 )
 async def get_user_info(
     request: Request,
-    token: str = Cookie(None, strict=False),
+    token: Annotated[str, Depends(oauth2_scheme)],
     db: AsyncSession = Depends(get_db),
 ):
     auth_service = AuthService()
