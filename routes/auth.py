@@ -159,10 +159,11 @@ async def login(
         response.set_cookie(
             key="token",
             value=token,
-            httponly=True,
+            httponly=False,
             secure=False,
-            samesite="none",
+            samesite="lax",
             max_age=3600,
+            domain=request.headers.get("origin"),
             path="/",
         )
         return response
@@ -340,10 +341,11 @@ async def verify_otp(
             response.set_cookie(
                 key="token",
                 value=token,
-                httponly=True,
+                httponly=False,
                 secure=False,
-                samesite="none",
+                samesite="lax",
                 max_age=3600,
+                domain=request.headers.get("origin"),
                 path="/",
             )
             return response
@@ -565,10 +567,11 @@ async def auth_google(
         redirect_response.set_cookie(
             key="token",
             value=token,
-            httponly=True,
+            httponly=False,
             secure=False,
-            samesite="none",
+            samesite="lax",
             max_age=3600,
+            domain=request.headers.get("origin"),
             path="/",
         )
         await delete_redis_value(f"redirect_uri:{state}")

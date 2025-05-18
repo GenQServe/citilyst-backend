@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = None
     GOOGLE_REDIRECT_URI: Optional[str] = None
     JWT_SECRET: Optional[str] = None
+    ALLOWED_ORIGINS: Optional[str] = None
     MAIL_USER_NAME: Optional[str] = None
     MAIL_PASSWORD: Optional[SecretStr] = None
     MAIL_FROM: Optional[str] = None
