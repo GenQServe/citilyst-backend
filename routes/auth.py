@@ -112,14 +112,15 @@ async def get_user_info(
     description="Login with email and password",
 )
 async def login(
-    request: BasicAuthRequest,
+    request: Request,
+    payload: BasicAuthRequest,
     db: AsyncSession = Depends(get_db),
 ):
     auth_service = AuthService()
     user_service = UserService()
     jwt_helper = JwtHelper()
-    email = request.email
-    password = request.password
+    email = payload.email
+    password = payload.password
 
     if not email or not password:
         return JSONResponse(
@@ -162,6 +163,7 @@ async def login(
             httponly=False,
             secure=False,
             samesite="lax",
+            domain=request.url.hostname,
             max_age=3600,
             path="/",
         )
@@ -187,17 +189,17 @@ async def login(
     status_code=status.HTTP_201_CREATED,
 )
 async def register(
-    request: UserCreate,
+    payload: UserCreate,
     db: AsyncSession = Depends(get_db),
 ):
     auth_service = AuthService()
     user_service = UserService()
     try:
-        email = request.email
-        password = request.password
-        name = request.name
-        nik = request.nik
-        print(f"Data: {request}")
+        email = payload.email
+        password = payload.password
+        name = payload.name
+        nik = payload.nik
+        print(f"Data: {payload}")
         if not email or not password or not name:
             return JSONResponse(
                 status_code=400,
@@ -227,7 +229,7 @@ async def register(
             logging.info(f"Verification token: {token}")
             # print(token)
             # email_verification_endpoint = (
-            #     f"{request.redirect_url}/auth/confirm-email/{token}/"
+            #     f"{payload.redirect_url}/auth/confirm-email/{token}/"
             # )
             # logging.info(f"Email verification endpoint: {email_verification_endpoint}")
 
@@ -287,16 +289,17 @@ async def register(
     description="Verify OTP sent to email",
 )
 async def verify_otp(
-    request: OTPRequest,
+    request: Request,
+    payload: OTPRequest,
     db: AsyncSession = Depends(get_db),
 ):
     auth_service = AuthService()
     user_service = UserService()
     jwt_helper = JwtHelper()
     try:
-        email = request.email
-        otp = request.otp
-        print(f"Data: {request}")
+        email = payload.email
+        otp = payload.otp
+        print(f"Data: {payload}")
         if not email or not otp:
             return JSONResponse(
                 status_code=400,
@@ -344,6 +347,7 @@ async def verify_otp(
                 secure=False,
                 samesite="lax",
                 max_age=3600,
+                domain=request.url.hostname,
                 path="/",
             )
             return response
@@ -569,6 +573,7 @@ async def auth_google(
             secure=False,
             samesite="lax",
             max_age=3600,
+            domain=request.url.hostname,
             path="/",
         )
         await delete_redis_value(f"redirect_uri:{state}")
