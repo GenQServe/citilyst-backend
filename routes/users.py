@@ -88,6 +88,7 @@ async def update_user(
     summary="Update user profile picture",
 )
 async def update_user_profile_picture(
+    request: Request,
     user_id: str,
     file: UploadFile = File(...),
     token: str = Cookie(None),
@@ -123,6 +124,7 @@ async def update_user_profile_picture(
     summary="Delete user by id",
 )
 async def delete_user(
+    request: Request,
     user_id: str,
     token: str = Cookie(None),
     db: AsyncSession = Depends(get_db),
