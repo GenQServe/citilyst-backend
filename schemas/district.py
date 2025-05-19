@@ -18,7 +18,6 @@ class DistrictResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
 
@@ -29,7 +28,6 @@ class DistrictListResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
 
@@ -51,7 +49,6 @@ class VillageResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
 
@@ -63,5 +60,4 @@ class VillageListResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
         from_attributes = True

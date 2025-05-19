@@ -7,3 +7,7 @@ class Users(ModelPermissions):
 
 class Items(ModelPermissions):
     pass
+
+
+class Districts(ModelPermissions):
+    pass
