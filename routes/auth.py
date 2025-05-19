@@ -479,7 +479,6 @@ async def auth_google(
             logging.info(f"Updating existing user: {user_info['email']}")
             update_data = {
                 "name": user_info.get("name"),
-                "image_url": user_info.get("picture"),
                 "email": user_info.get("email"),
             }
             updated_user = await user_service.update_user(
