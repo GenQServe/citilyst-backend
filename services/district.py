@@ -14,6 +14,7 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from helpers.redis import set_redis_value, get_redis_value, delete_redis_value
 from schemas.district import (
     DistrictCreate,
@@ -79,6 +80,38 @@ class DistrictService:
         except Exception as e:
             logging.error(f"Error fetching districts: {str(e)}")
             raise Exception(f"Failed to fetch districts: {str(e)}")
+
+    # get all district with villages
+    async def get_all_districts_with_villages(self, db: AsyncSession) -> List[dict]:
+        try:
+            result = await db.execute(
+                select(District).options(selectinload(District.villages))
+            )
+            districts = result.scalars().all()
+            return [district.to_dict_with_villages() for district in districts]
+        except Exception as e:
+            logging.error(f"Error fetching districts with villages: {str(e)}")
+            raise Exception(f"Failed to fetch districts with villages: {str(e)}")
+
+    async def get_district_by_id_with_villages(self, db: AsyncSession, id: str) -> dict:
+        try:
+            result = await db.execute(
+                select(District)
+                .where(District.id == id)
+                .options(selectinload(District.villages))
+            )
+            district_model = result.scalars().first()
+            if not district_model:
+                raise HTTPException(status_code=404, detail="District not found")
+            return district_model.to_dict_with_villages()
+        except HTTPException as e:
+            logging.warning(
+                f"HTTP error in get_district_by_id_with_villages: {e.status_code} - {e.detail}"
+            )
+            raise e
+        except Exception as e:
+            logging.error(f"Error fetching district with villages: {str(e)}")
+            raise Exception(f"Failed to fetch district with villages: {str(e)}")
 
     async def delete_district(self, db: AsyncSession, district_id: str) -> dict:
         try:

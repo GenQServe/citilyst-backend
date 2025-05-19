@@ -34,14 +34,30 @@ ROLE_PERMISSIONS = {
             Districts.permissions.UPDATE,
             Districts.permissions.DELETE,
         ],
+        [
+            Villages.permissions.CREATE,
+            Villages.permissions.READ,
+            Villages.permissions.UPDATE,
+            Villages.permissions.DELETE,
+        ],
     ],
     Role.USER: [
         [
             Items.permissions.CREATE,
             Items.permissions.READ,
             Items.permissions.UPDATE,
+        ],
+        [
             Users.permissions.UPDATE,
-        ]
+            UsersProfile.permissions.READ,
+            UsersProfile.permissions.UPDATE,
+        ],
+        [
+            Districts.permissions.READ,
+        ],
+        [
+            Villages.permissions.READ,
+        ],
     ],
 }
 

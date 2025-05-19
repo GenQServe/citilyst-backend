@@ -10,7 +10,10 @@ class Village(Base):
 
     id = Column(String(25), primary_key=True, default=generate_cuid)
     name = Column(String(255), nullable=False)
-    district_id = Column(String(25), ForeignKey("tbl_district.id"), nullable=False)
+    district_id = Column(
+        String(25),
+        ForeignKey("tbl_district.id", ondelete="CASCADE"),
+    )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -29,4 +32,14 @@ class Village(Base):
             "district_id": self.district_id,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+        }
+
+    def to_dict_with_district(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "district_id": self.district_id,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "district": self.district.to_dict() if self.district else None,
         }

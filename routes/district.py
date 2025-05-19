@@ -4,7 +4,6 @@ import sys
 from typing import Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.params import Cookie, Header
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -27,8 +26,6 @@ from helpers.config import settings
 from services.district import DistrictService
 from permissions.model_permission import Districts as DistrictPermissions
 
-from schemas.feedback_user import FeedbackUserRequest
-from helpers.redis import get_redis_value, set_redis_value, delete_redis_value
 
 from services.users import UserService
 
@@ -110,6 +107,76 @@ async def get_all_district(
         return JSONResponse(status_code=e.status_code, content={"message": e.detail})
     except Exception as e:
         logging.error(f"Error getting all district: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Internal server error"},
+        )
+
+
+# get all district with villages
+@routes_district.get(
+    "/with-villages",
+    summary="Get all district with villages",
+)
+async def get_all_district_with_villages(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    dependencies=Depends(PermissionChecker([DistrictPermissions.permissions.READ])),
+) -> JSONResponse:
+    """
+    Get all district with villages
+    """
+    try:
+        district_service = DistrictService()
+        district = await district_service.get_all_districts_with_villages(db)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "District retrieved successfully",
+                "data": jsonable_encoder(district),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error getting all district: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Internal server error"},
+        )
+
+
+@routes_district.get(
+    "/{district_id}/villages",
+    response_model=DistrictResponse,
+    summary="Get district by name with villages",
+)
+async def get_district_by_id_with_villages(
+    district_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    dependencies=Depends(PermissionChecker([DistrictPermissions.permissions.READ])),
+) -> JSONResponse:
+    """
+    Get district by name with villages
+    """
+    try:
+        district_service = DistrictService()
+
+        district = await district_service.get_district_by_id_with_villages(
+            db, district_id
+        )
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "District retrieved successfully",
+                "data": jsonable_encoder(district),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error getting district by name: {str(e)}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": "Internal server error"},
