@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from services.users import UserService
 from sqlalchemy.ext.asyncio import AsyncSession
-from schemas.users import UserCreate, UserUpdate
+from schemas.users import UserCreate, UserUpdate, UserCreateByAdmin
 from typing import List, Optional, Annotated
 from fastapi import UploadFile
 from fastapi.responses import JSONResponse
@@ -24,6 +24,53 @@ from permissions.model_permission import Users
 
 routes_user = APIRouter(prefix="/user", tags=["User"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+# create user
+@routes_user.post(
+    "/",
+    response_model=dict,
+    summary="Create user",
+)
+async def create_user(
+    request: Request,
+    user: UserCreateByAdmin,
+    dependencies=Depends(PermissionChecker([Users.permissions.CREATE])),
+    db: AsyncSession = Depends(get_db),
+) -> JSONResponse:
+
+    try:
+        user_service = UserService()
+
+        try:
+            existing_user = await user_service.get_user_by_email(db, user.email)
+            if existing_user:
+                return JSONResponse(
+                    status_code=status.HTTP_409_CONFLICT,
+                    content={"message": "User already exists"},
+                )
+        except HTTPException as e:
+            if e.status_code != 404:
+                raise e
+
+        created_user = await user_service.create_user(db, user.dict(exclude_unset=True))
+
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={
+                "message": "User created successfully",
+                "data": jsonable_encoder(created_user),
+            },
+        )
+    except HTTPException as e:
+        logging.warning(f"HTTP error in create_user: {e.status_code} - {e.detail}")
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error creating user: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": f"Internal server error: {str(e)}"},
+        )
 
 
 @routes_user.get("/{user_id}", response_model=dict, summary="Get user profile by id")
@@ -47,6 +94,39 @@ async def get_user_by_id(
         )
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+
+
+@routes_user.get(
+    "/",
+    response_model=List[dict],
+    summary="Get all users",
+)
+async def get_all_users(
+    request: Request,
+    dependencies=Depends(PermissionChecker([Users.permissions.READ])),
+    db: AsyncSession = Depends(get_db),
+) -> JSONResponse:
+    """
+    Get all users
+    """
+    try:
+        user_service = UserService()
+        users = await user_service.get_all_users(db)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "Users retrieved successfully",
+                "data": jsonable_encoder(users),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error getting all users: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Internal server error"},
+        )
 
 
 @routes_user.put(
@@ -129,7 +209,6 @@ async def delete_user(
     user_id: str,
     dependencies=Depends(PermissionChecker([Users.permissions.DELETE])),
     db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_role(["admin"])),
 ) -> JSONResponse:
     """
     Delete user by id

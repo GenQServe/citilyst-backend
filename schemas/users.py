@@ -16,6 +16,15 @@ class UserCreate(UserBase):
     pass
 
 
+class UserCreateByAdmin(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    nik: Optional[str] = None
+    phone_number: Optional[str] = None
+    address: Optional[str] = None
+
+
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None

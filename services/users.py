@@ -55,7 +55,7 @@ class UserService:
 
     async def get_all_users(self, db: AsyncSession) -> List[dict]:
         try:
-            result = await db.execute(select(User))
+            result = await db.execute(select(User).order_by(User.created_at.desc()))
             users = result.scalars().all()
             users_list = [user.to_dict() for user in users]
             for user in users_list:
