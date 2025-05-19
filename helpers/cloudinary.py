@@ -13,22 +13,22 @@ def configure_cloudinary() -> None:
     Configure Cloudinary with credentials from settings or environment variables
     """
     try:
-        # Get credentials from settings if available, otherwise from env vars
-        cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
-        api_key = os.getenv("CLOUDINARY_API_KEY")
-        api_secret = os.getenv("CLOUDINARY_API_SECRET")
+        cloud_name = getattr(
+            settings, "CLOUDINARY_CLOUD_NAME", os.getenv("CLOUDINARY_CLOUD_NAME")
+        )
+        api_key = getattr(
+            settings, "CLOUDINARY_API_KEY", os.getenv("CLOUDINARY_API_KEY")
+        )
+        api_secret = getattr(
+            settings,
+            "CLOUDINARY_API_SECRET",
+            os.getenv("CLOUDINARY_API_SECRET"),
+        )
 
-        if has_settings:
-            cloud_name = getattr(settings, "CLOUDINARY_CLOUD_NAME", cloud_name)
-            api_key = getattr(settings, "CLOUDINARY_API_KEY", api_key)
-            api_secret = getattr(settings, "CLOUDINARY_API_SECRET", api_secret)
-
-        # Check if all required credentials are present
         if not all([cloud_name, api_key, api_secret]):
             logging.error("Cloudinary credentials not fully configured")
             return
 
-        # Configure Cloudinary
         cloudinary.config(
             cloud_name=cloud_name, api_key=api_key, api_secret=api_secret, secure=True
         )

@@ -14,20 +14,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helpers.db import db_connection, get_db
 from helpers.jwt import JwtHelper
 from middleware.rbac_middleware import verify_role
+from models.district import District
 from schemas.district import (
     DistrictCreate,
     DistrictUpdate,
     DistrictResponse,
-    DistrictResponseList,
     DistrictListResponse,
-    VillageCreate,
-    VillageUpdate,
-    VillageResponse,
-    VillageResponseList,
 )
-from services.auth import AuthService
+from services.auth import AuthService, PermissionChecker
 import redis.asyncio as redis
 from helpers.config import settings
+from services.district import DistrictService
+from permissions.model_permission import Districts as DistrictPermissions
 
 from schemas.feedback_user import FeedbackUserRequest
 from helpers.redis import get_redis_value, set_redis_value, delete_redis_value
@@ -35,7 +33,7 @@ from helpers.redis import get_redis_value, set_redis_value, delete_redis_value
 from services.users import UserService
 
 
-routes_district = APIRouter(prefix="/district", tags=["District"])
+routes_district = APIRouter(prefix="/districts", tags=["District"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 
@@ -47,15 +45,27 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 async def create_district(
     request: Request,
     district: DistrictCreate,
+    dependencies=Depends(PermissionChecker([DistrictPermissions.permissions.CREATE])),
     db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_role(["admin"])),
 ) -> JSONResponse:
     """
     Create district
     """
     try:
         district_service = DistrictService()
-        district = await district_service.create_district(db, district)
+        try:
+            existing_district = await district_service.get_district_by_name(
+                db, district.name
+            )
+            if existing_district:
+                return JSONResponse(
+                    status_code=status.HTTP_409_CONFLICT,
+                    content={"message": "District already exists"},
+                )
+        except HTTPException as e:
+            if e.status_code != 404:
+                raise e
+            district = await district_service.create_district(db, district)
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
             content={
@@ -69,62 +79,26 @@ async def create_district(
         logging.error(f"Error creating district: {str(e)}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": f"Failed to create district: {str(e)}"},
-        )
-
-
-# route untuk update district
-@routes_district.put(
-    "/{district_id}",
-    response_model=DistrictResponse,
-    summary="Update district",
-)
-async def update_district(
-    request: Request,
-    district_id: str,
-    district: DistrictUpdate,
-    db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_role(["admin"])),
-) -> JSONResponse:
-    """
-    Update district
-    """
-    try:
-        district_service = DistrictService()
-        district = await district_service.update_district(db, district_id, district)
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={
-                "message": "District updated successfully",
-                "data": jsonable_encoder(district),
-            },
-        )
-    except HTTPException as e:
-        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
-    except Exception as e:
-        logging.error(f"Error updating district: {str(e)}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": f"Failed to update district: {str(e)}"},
+            content={"message": "Internal server error"},
         )
 
 
 @routes_district.get(
     "/",
-    response_model=DistrictResponseList,
+    response_model=DistrictListResponse,
     summary="Get all district",
 )
 async def get_all_district(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_role(["admin", "user"])),
+    dependencies=Depends(PermissionChecker([DistrictPermissions.permissions.READ])),
 ) -> JSONResponse:
     """
     Get all district
     """
     try:
         district_service = DistrictService()
-        district = await district_service.get_all_district(db)
+        district = await district_service.get_all_districts(db)
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
@@ -138,5 +112,95 @@ async def get_all_district(
         logging.error(f"Error getting all district: {str(e)}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": f"Failed to get all district: {str(e)}"},
+            content={"message": "Internal server error"},
+        )
+
+
+@routes_district.put(
+    "/{district_id}",
+    response_model=DistrictResponse,
+    summary="Update district",
+    description="Update an existing district by ID",
+)
+async def update_district(
+    district_id: str,
+    district: DistrictUpdate,
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    dependencies=Depends(PermissionChecker([DistrictPermissions.permissions.UPDATE])),
+) -> JSONResponse:
+    """
+    Update district by ID
+    """
+    try:
+        district_service = DistrictService()
+
+        existing_district = await district_service.get_district_by_id(db, district_id)
+
+        if district.name and district.name != existing_district["name"]:
+            try:
+                conflict = await district_service.get_district_by_name(
+                    db, district.name
+                )
+                if conflict and conflict["id"] != district_id:
+                    return JSONResponse(
+                        status_code=status.HTTP_409_CONFLICT,
+                        content={
+                            "message": f"District with name '{district.name}' already exists"
+                        },
+                    )
+            except HTTPException as e:
+                raise e
+        updated_district = await district_service.update_district(
+            db, district_id, district
+        )
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "District updated successfully",
+                "data": jsonable_encoder(updated_district),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error updating district: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Internal server error"},
+        )
+
+
+@routes_district.delete(
+    "/{district_id}",
+    response_model=dict,
+    summary="Delete district",
+)
+async def delete_district(
+    district_id: str,
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    dependencies=Depends(PermissionChecker([DistrictPermissions.permissions.DELETE])),
+) -> JSONResponse:
+    """
+    Delete district by ID
+    """
+    try:
+        district_service = DistrictService()
+        deleted_district = await district_service.delete_district(db, district_id)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "District deleted successfully",
+                "data": jsonable_encoder(deleted_district),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error deleting district: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Internal server error"},
         )
