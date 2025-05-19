@@ -11,6 +11,7 @@ from schemas.users import UserCreate, UserUpdate
 from typing import List, Optional, Annotated
 from fastapi import UploadFile
 from fastapi.responses import JSONResponse
+from services.auth import get_role_permissions, PermissionChecker
 from helpers.redis import (
     get_redis_client,
     set_redis_value,
@@ -19,6 +20,7 @@ from helpers.redis import (
 )
 from helpers.db import get_db
 from middleware.rbac_middleware import verify_role
+from permissions.model_permission import Users
 
 routes_user = APIRouter(prefix="/user", tags=["User"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -27,9 +29,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 @routes_user.get("/{user_id}", response_model=dict, summary="Get user profile by id")
 async def get_user_by_id(
     user_id: str,
-    token: Annotated[str, Depends(oauth2_scheme)],
+    dependencies=Depends(PermissionChecker([Users.permissions.READ])),
     db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_role(["admin"])),
 ) -> JSONResponse:
     """
     Get user profile by id
@@ -57,7 +58,7 @@ async def update_user(
     request: Request,
     user_id: str,
     user: UserUpdate,
-    token: Annotated[str, Depends(oauth2_scheme)],
+    dependencies=Depends(PermissionChecker([Users.permissions.UPDATE])),
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
     """
@@ -91,7 +92,7 @@ async def update_user(
 async def update_user_profile_picture(
     request: Request,
     user_id: str,
-    token: Annotated[str, Depends(oauth2_scheme)],
+    dependencies=Depends(PermissionChecker([Users.permissions.UPDATE])),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
@@ -126,7 +127,7 @@ async def update_user_profile_picture(
 async def delete_user(
     request: Request,
     user_id: str,
-    token: Annotated[str, Depends(oauth2_scheme)],
+    dependencies=Depends(PermissionChecker([Users.permissions.DELETE])),
     db: AsyncSession = Depends(get_db),
     _: bool = Depends(verify_role(["admin"])),
 ) -> JSONResponse:

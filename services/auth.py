@@ -5,9 +5,11 @@ from urllib.parse import urlencode
 import redis.asyncio as redis  # Make sure this is the async version
 import requests
 from datetime import datetime, timedelta, timezone
+from typing import List
 from jose import jwt, JWTError
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Depends, status
 from helpers.google_auth import GoogleAuth
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from models.users import User
 from fastapi.responses import Response
@@ -15,10 +17,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from sqlalchemy.future import select
 from helpers.redis import set_redis_value, get_redis_value, delete_redis_value
+from fastapi.security import OAuth2PasswordBearer
+from permissions.base import ModelPermission
+from permissions.roles import get_role_permissions
+from helpers.db import get_db
+from helpers.config import settings
+from helpers.jwt import JwtHelper
+from services.users import UserService
+
 
 # REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 # redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class BearAuthException(Exception):
+    pass
 
 
 class AuthService:
@@ -99,6 +114,55 @@ class AuthService:
             raise HTTPException(
                 status_code=500, detail=f"Authentication error: {str(e)}"
             )
+
+    def get_token_payload(self, token: str = Depends(oauth2_scheme)):
+        jwt_helper = JwtHelper()
+        try:
+            payload = jwt_helper.decode(token=token)
+            payload_sub: str = payload.get("sub")
+            if payload_sub is None:
+                raise BearAuthException("Token could not be validated")
+            return payload_sub
+        except JWTError:
+            raise BearAuthException("Token could not be validated")
+
+    async def get_current_user(
+        self, db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)
+    ):
+        try:
+            user_id = self.get_token_payload(token)
+        except BearAuthException:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate bearer token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user_service = UserService()
+        user = await user_service.get_user(db, user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Unauthorized, could not validate credentials.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return user
+
+
+class PermissionChecker:
+    auth_service = AuthService()
+
+    def __init__(self, permissions_required: List[ModelPermission]):
+        self.permissions_required = permissions_required
+
+    def __call__(self, user=Depends(auth_service.get_current_user)):
+        for permission_required in self.permissions_required:
+            print(f"user: {user.get('role')}")
+            if permission_required not in get_role_permissions(user.get("role")):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not enough permissions to access this resource",
+                )
+        return user
 
     # def create_token(self, user_data: dict) -> str:
     #     """
