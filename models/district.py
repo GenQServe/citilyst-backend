@@ -5,9 +5,6 @@ from helpers.common import generate_cuid
 from helpers.db import Base
 
 
-# one-to-many relationship with Village
-
-
 class District(Base):
     __tablename__ = "tbl_district"
 
@@ -19,6 +16,7 @@ class District(Base):
     villages = relationship(
         "Village", back_populates="district", cascade="all, delete-orphan"
     )
+    reports = relationship("Report", back_populates="district")
 
     def __init__(self, name: str):
         self.name = name

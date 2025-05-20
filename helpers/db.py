@@ -47,7 +47,7 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.ERROR)
 
 engine = create_async_engine(
     DATABASE_URL,
-    echo=False,
+    echo=True if not is_production else False,
     pool_pre_ping=True,
     pool_recycle=3600,
     pool_size=5,
@@ -70,6 +70,7 @@ async def init_models():
         print("Creating database tables if not exist...")
 
         from models.users import User
+        from models.reports import ReportCategory, Report, ReportImage
 
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
