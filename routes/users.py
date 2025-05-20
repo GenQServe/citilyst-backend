@@ -20,7 +20,7 @@ from helpers.redis import (
 )
 from helpers.db import get_db
 from middleware.rbac_middleware import verify_role
-from permissions.model_permission import Users
+from permissions.model_permission import Users, UsersProfile
 
 routes_user = APIRouter(prefix="/user", tags=["User"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -172,7 +172,7 @@ async def update_user(
 async def update_user_profile_picture(
     request: Request,
     user_id: str,
-    dependencies=Depends(PermissionChecker([Users.permissions.UPDATE])),
+    dependencies=Depends(PermissionChecker([UsersProfile.permissions.UPDATE])),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
