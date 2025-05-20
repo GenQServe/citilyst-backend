@@ -20,9 +20,10 @@ class ReportGenerateRequest(BaseModel):
 
 
 class DescriptionRequest(BaseModel):
+    report_id: Optional[str] = None
     user_id: str
-    district: str
-    village: str
-    description: str = constr(min_length=12, max_length=200)
+    category_key: str
+    district_id: str
+    village_id: str
+    description: str = constr(min_length=12, max_length=200, to_lower=True)
     location: str
-    category: str

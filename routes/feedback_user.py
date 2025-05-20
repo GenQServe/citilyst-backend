@@ -57,7 +57,6 @@ async def create_feedback_user(
         return JSONResponse(status_code=e.status_code, content={"message": e.detail})
 
 
-# buatkan route untuk get all feedback user
 @routes_feedback_user.get(
     "/",
     response_model=dict,

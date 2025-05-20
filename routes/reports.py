@@ -22,6 +22,7 @@ from httpx import AsyncClient
 from helpers.config import settings
 from services.reports import ReportService
 from permissions.model_permission import Reports as ReportPermissions
+from helpers.common import generate_cuid
 
 routes_report = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -112,7 +113,7 @@ async def create_report_category(
 )
 async def generate_description(
     request: Request,
-    description_request: DescriptionRequest,
+    generate_request: DescriptionRequest,
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
     """
@@ -120,28 +121,38 @@ async def generate_description(
     """
     try:
         # geerate report time
-        report_time = datetime(tzinfo=timezone.utc).isoformat()
-        # async request to n8n
-        # async with AsyncClient() as client:
-        #     response = await client.post
-        #         url=f"{settings.N8N_URL}/webhook/generate-description",
-        #         json=description_request.model_dump(),
-        #     )
-        #     if response.status_code != 200:
-        #         raise HTTPException(
-        #             status_code=response.status_code,
-        #             detail="Failed to generate description",
-        #         )
-        #     generated_description = response.json()
-        report_data = {
-            "description": description_request.description,
-            "report_time": report_time,
+        report_id = generate_cuid()
+        generate_request.report_id = report_id
+
+        # get category
+        reports_service = ReportService()
+        category = await reports_service.get_category_by_key(
+            db, generate_request.category_key
+        )
+
+        request_payload = {
+            "report_id": report_id,
+            "category_name": category.get("name"),
+            "description": generate_request.description,
+            "location": generate_request.location,
         }
+        # request tp n8n
+        async with AsyncClient() as client:
+            response = await client.post(
+                f"{settings.N8N_API_URL}/webhook/generate-description",
+                json=request_payload,
+                timeout=20,
+            )
+            if response.status_code != 200:
+                return JSONResponse(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={"message": "Failed to generate description"},
+                )
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
                 "message": "Description generated successfully",
-                "data": jsonable_encoder(report_data),
+                "data": jsonable_encoder(response.json()),
             },
         )
     except HTTPException as e:
