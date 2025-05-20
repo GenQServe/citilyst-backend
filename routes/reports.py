@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from helpers.db import db_connection, get_db
 from helpers.jwt import JwtHelper
 from models import reports
+from models.district import District
 from services.auth import AuthService, PermissionChecker
 import redis.asyncio as redis
 from schemas.reports import DescriptionRequest, CategoryCreateRequest
@@ -23,6 +24,8 @@ from helpers.config import settings
 from services.reports import ReportService
 from permissions.model_permission import Reports as ReportPermissions
 from helpers.common import generate_cuid
+from services.district import DistrictService
+from services.village import VillageService
 
 routes_report = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -130,9 +133,27 @@ async def generate_description(
             db, generate_request.category_key
         )
 
+        # get district
+        district_service = DistrictService()
+        district = await district_service.get_district_by_id(
+            db, generate_request.district_id
+        )
+        if not district:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"message": "District not found"},
+            )
+        # get village
+        village_service = VillageService()
+        village = await village_service.get_village_by_id(
+            db, generate_request.village_id
+        )
+
         request_payload = {
             "report_id": report_id,
             "category_name": category.get("name"),
+            "district_name": district.get("name"),
+            "village_name": village.get("name"),
             "description": generate_request.description,
             "location": generate_request.location,
         }
