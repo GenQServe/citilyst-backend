@@ -9,7 +9,7 @@ class UsersProfile(ModelPermissions):
     pass
 
 
-class Items(ModelPermissions):
+class Reports(ModelPermissions):
     pass
 
 

@@ -36,6 +36,10 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    reports = relationship(
+        "Report", back_populates="user", cascade="all, delete-orphan"
+    )
+
     def __init__(self, email: str, **kwargs):
         self.email = email
         self.id = generate_cuid()

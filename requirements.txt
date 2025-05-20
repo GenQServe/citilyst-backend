@@ -36,4 +36,6 @@ pytest-asyncio
 pytest-mock
 pytest-cov
 httpx
+aioresponses
+aiohttp
 cloudinary

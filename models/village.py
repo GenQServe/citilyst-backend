@@ -10,14 +10,12 @@ class Village(Base):
 
     id = Column(String(25), primary_key=True, default=generate_cuid)
     name = Column(String(255), nullable=False)
-    district_id = Column(
-        String(25),
-        ForeignKey("tbl_district.id", ondelete="CASCADE"),
-    )
+    district_id = Column(String(25), ForeignKey("tbl_district.id", ondelete="CASCADE"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     district = relationship("District", back_populates="villages")
+    reports = relationship("Report", back_populates="village")
 
     def __init__(self, name: str, district_id: str):
         self.name = name

@@ -12,6 +12,7 @@ from helpers.scheduler import setup as scheduler_setup
 from helpers.db import db_connection
 from helpers.config import settings
 from middleware.rbac_middleware import RBACMiddleware
+from helpers.aiohttp import SingletonAiohttp
 
 # Setup logging
 log.setup()
@@ -22,6 +23,7 @@ async def lifespan(app: FastAPI):
     try:
         logging.info("Starting application...")
         logging.info("Initializing database connection & tables")
+        SingletonAiohttp.get_aiohttp_client()
         await db_connection.init()
         logging.info("Database initialized successfully")
         yield
@@ -32,6 +34,7 @@ async def lifespan(app: FastAPI):
         logging.info("Shutting down application...")
         try:
             close_all_sessions()
+            await SingletonAiohttp.close_aiohttp_client()
             await db_connection.close()
             logging.info("Application shutdown complete")
         except Exception as e:
