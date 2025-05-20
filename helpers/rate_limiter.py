@@ -7,7 +7,7 @@ from throttled.storage.memory import MemoryStorage
 
 def setup(app: FastAPI):
     memory = MemoryStorage(cache={})
-    total_limiter = TotalLimiter(limit=Rate(2, 1), storage=memory)
+    total_limiter = TotalLimiter(limit=Rate(4, 1), storage=memory)
     ip_limiter = IPLimiter(limit=Rate(5, 1), storage=memory)
 
     app.add_middleware(BaseHTTPMiddleware, dispatch=total_limiter.dispatch)
