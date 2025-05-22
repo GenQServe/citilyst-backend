@@ -1,13 +1,16 @@
 FROM python:3.12-slim
 
-# Install dependencies & system packages
 RUN apt-get update && apt-get install -y \
-    curl \
-    redis-tools \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y tk-dev python3-tk \
-    && rm -rf /var/lib/apt/lists/*
+    libpangocairo-1.0-0 \
+    libpangoft2-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libcairo2 \
+    libffi-dev \
+    libgobject-2.0-0 \
+    libxml2 \
+    libxslt1.1 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
 
