@@ -2,10 +2,6 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
 from math import log
-import os
-import re
-import sys
-from turtle import up
 from typing import Optional, Union
 from fastapi import (
     APIRouter,
