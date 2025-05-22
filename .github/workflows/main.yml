@@ -71,6 +71,8 @@ jobs:
           CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
           N8N_API_URL=${{ secrets.N8N_API_URL }}
+          GOOGLE_DRIVE_FOLDER_ID=${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          GOOGLE_SERVICE_ACCOUNT_FILE=${{ secrets.GOOGLE_SERVICE_ACCOUNT_FILE }}
           EOF
 
       # Buat folder remote jika belum ada
