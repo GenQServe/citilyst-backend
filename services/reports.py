@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from fastapi import HTTPException
 from typing import List, Optional
+from models.district import District
 from models.users import User
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +16,12 @@ from passlib.context import CryptContext
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from helpers.redis import set_redis_value, get_redis_value, delete_redis_value
-from schemas.reports import CategoryCreateRequest, ReportGenerateRequest
+from models.village import Village
+from schemas.reports import (
+    CategoryCreateRequest,
+    ReportGenerateRequest,
+    ReportUpdateRequest,
+)
 from models.reports import *
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -84,6 +90,102 @@ class ReportService:
         except Exception as e:
             logging.error(f"Error creating category: {str(e)}")
             raise Exception(f"Failed to create category: {str(e)}")
+
+    async def get_report_by_id(self, db: AsyncSession, report_id: str) -> dict:
+        try:
+            result = await db.execute(
+                select(Report)
+                .where(Report.id == report_id)
+                .options(selectinload(Report.user))
+            )
+            report_model = result.scalars().first()
+            if not report_model:
+                raise HTTPException(status_code=404, detail="Report not found")
+            return report_model.to_dict_with_user()
+        except HTTPException as e:
+            logging.warning(
+                f"HTTP error in get_report_by_id: {e.status_code} - {e.detail}"
+            )
+            raise e
+        except Exception as e:
+            logging.error(f"Error fetching report: {str(e)}")
+            raise Exception(f"Failed to fetch report: {str(e)}")
+
+    async def get_all_reports(self, db: AsyncSession) -> List[dict]:
+        try:
+            result = await db.execute(
+                select(Report)
+                .options(selectinload(Report.user))
+                .order_by(Report.created_at.desc())
+            )
+            reports = result.scalars().all()
+            reports_list = [report.to_dict_with_user() for report in reports]
+            for report in reports_list:
+                # Fetch the category name using the category_key
+                category = await db.execute(
+                    select(ReportCategory).where(
+                        ReportCategory.key == report["category_key"]
+                    )
+                )
+                category_model = category.scalars().first()
+
+                if category_model:
+                    report["category_name"] = category_model.name
+                else:
+                    report["category_name"] = None
+
+            # fetch district and village names
+            for report in reports_list:
+                if report["district_id"]:
+                    district = await db.execute(
+                        select(District).where(District.id == report["district_id"])
+                    )
+                    district_model = district.scalars().first()
+                    report["district_name"] = (
+                        district_model.name if district_model else None
+                    )
+                else:
+                    report["district_name"] = None
+
+                if report["village_id"]:
+                    village = await db.execute(
+                        select(Village).where(Village.id == report["village_id"])
+                    )
+                    village_model = village.scalars().first()
+                    report["village_name"] = (
+                        village_model.name if village_model else None
+                    )
+                else:
+                    report["village_name"] = None
+            return reports_list
+
+        except Exception as e:
+            logging.error(f"Error fetching reports: {str(e)}")
+            raise Exception(f"Failed to fetch reports: {str(e)}")
+
+    # update report
+    async def update_report(
+        self, db: AsyncSession, report_id: str, report: ReportUpdateRequest
+    ) -> dict:
+        try:
+            result = await db.execute(select(Report).where(Report.id == report_id))
+            report_model = result.scalars().first()
+            if not report_model:
+                raise HTTPException(status_code=404, detail="Report not found")
+
+            for key, value in report.model_dump(exclude_unset=True).items():
+                setattr(report_model, key, value)
+            await db.commit()
+            await db.refresh(report_model)
+            return report_model.to_dict()
+        except HTTPException as e:
+            logging.warning(
+                f"HTTP error in update_report: {e.status_code} - {e.detail}"
+            )
+            raise e
+        except Exception as e:
+            logging.error(f"Error updating report: {str(e)}")
+            raise Exception(f"Failed to update report: {str(e)}")
 
     async def upload_file_to_google_drive(self, file_path: str, folder_id: str) -> dict:
         try:

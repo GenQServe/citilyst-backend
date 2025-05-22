@@ -373,3 +373,81 @@ async def submit_report(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": " Internal server error"},
         )
+
+
+# get all reports
+@routes_report.get(
+    "/",
+    response_model=dict,
+    summary="Get all reports",
+)
+async def get_all_reports(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    dependencies=Depends(PermissionChecker([ReportPermissions.permissions.READ])),
+) -> JSONResponse:
+    """
+    Get all reports
+    """
+    try:
+        reports_service = ReportService()
+        reports = await reports_service.get_all_reports(db)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "Reports retrieved successfully",
+                "data": jsonable_encoder(reports),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error fetching reports: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Failed to fetch reports"},
+        )
+
+
+@routes_report.put(
+    "/{report_id}",
+    response_model=dict,
+    summary="Update report",
+)
+async def update_report(
+    request: Request,
+    report_id: str,
+    payload: ReportUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    dependencies=Depends(PermissionChecker([ReportPermissions.permissions.UPDATE])),
+) -> JSONResponse:
+    """
+    Update report
+    """
+    try:
+        reports_service = ReportService()
+        report = await reports_service.get_report_by_id(db, report_id)
+        if not report:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"message": "Report not found"},
+            )
+
+        # Update report
+        updated_report = await reports_service.update_report(db, report_id, payload)
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "Report updated successfully",
+                "data": jsonable_encoder(updated_report),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error updating report: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Failed to update report"},
+        )

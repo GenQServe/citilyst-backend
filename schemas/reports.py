@@ -1,13 +1,21 @@
 from datetime import datetime
+import enum
 from pydantic import BaseModel, EmailStr, field_validator, constr
 from typing import Optional
-
+from models import reports
 from models import district
 
 
 class CategoryCreateRequest(BaseModel):
     key: str
     name: str
+
+
+class ReportUpdateRequest(BaseModel):
+    report_id: str
+    user_id: str
+    status: Optional[reports.ReportStatus] = None
+    feedback: Optional[str] = None
 
 
 class ReportGenerateRequest(BaseModel):
