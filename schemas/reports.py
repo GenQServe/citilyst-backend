@@ -11,12 +11,15 @@ class CategoryCreateRequest(BaseModel):
 
 
 class ReportGenerateRequest(BaseModel):
+    report_id: str
     user_id: str
-    category: str
-    description: str
-    kelurahan: str
-    kecamatan: str
+    category_key: str
+    formal_description: str
+    district_id: str
+    village_id: str
     location: str
+    file_url: Optional[str] = None
+    images_url: list[str]
 
 
 class DescriptionRequest(BaseModel):

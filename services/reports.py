@@ -81,3 +81,27 @@ class ReportService:
         except Exception as e:
             logging.error(f"Error creating category: {str(e)}")
             raise Exception(f"Failed to create category: {str(e)}")
+
+    # create report
+    async def create_report(
+        self, db: AsyncSession, report: ReportGenerateRequest
+    ) -> dict:
+        try:
+            report_model = Report(
+                report_id=report.report_id,
+                user_id=report.user_id,
+                category_key=report.category_key,
+                formal_description=report.formal_description,
+                district_id=report.district_id,
+                village_id=report.village_id,
+                location=report.location,
+                file_url=report.file_url,
+                images_url=report.images_url,
+            )
+            db.add(report_model)
+            await db.commit()
+            await db.refresh(report_model)
+            return report_model.to_dict()
+        except Exception as e:
+            logging.error(f"Error creating report: {str(e)}")
+            raise Exception(f"Failed to create report: {str(e)}")
