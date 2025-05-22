@@ -2,6 +2,7 @@ import dis
 import logging
 import os
 import secrets
+from tkinter import E
 from urllib.parse import urlencode
 import redis.asyncio as redis
 import requests
@@ -18,6 +19,10 @@ from sqlalchemy.orm import selectinload
 from helpers.redis import set_redis_value, get_redis_value, delete_redis_value
 from schemas.reports import CategoryCreateRequest, ReportGenerateRequest
 from models.reports import *
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaFileUpload
+from helpers.config import settings
 
 
 class ReportService:
@@ -82,7 +87,84 @@ class ReportService:
             logging.error(f"Error creating category: {str(e)}")
             raise Exception(f"Failed to create category: {str(e)}")
 
-    # create report
+    async def upload_file_to_google_drive(self, file_path: str, folder_id: str) -> dict:
+        try:
+            # Check if file exists
+            if not os.path.exists(file_path):
+                raise HTTPException(
+                    status_code=404, detail=f"File not found: {file_path}"
+                )
+
+            # Get credentials
+            credentials = self._get_google_credentials()
+
+            # Upload to Google Drive
+            service = build("drive", "v3", credentials=credentials)
+            file_metadata = {
+                "name": os.path.basename(file_path),
+                "parents": [folder_id],
+            }
+            media = MediaFileUpload(file_path, mimetype="application/pdf")
+            file = (
+                service.files()
+                .create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields="id, webContentLink, webViewLink",
+                )
+                .execute()
+            )
+            file_id = file.get("id")
+            web_content_link = file.get("webContentLink")
+            web_view_link = file.get("webViewLink")
+
+            logging.info(
+                f"File uploaded successfully to Google Drive: {web_content_link}"
+            )
+            return {
+                "file_id": file_id,
+                "web_content_link": web_content_link,
+                "web_view_link": web_view_link,
+            }
+        except HttpError as e:
+            logging.error(f"Google Drive API error: {e}")
+            raise Exception(f"Google Drive API error: {str(e)}")
+        except Exception as e:
+            logging.error(f"Error uploading file to Google Drive: {str(e)}")
+            raise Exception(f"Failed to upload file: {str(e)}")
+
+    def _get_google_credentials(self):
+        """
+        Get Google API credentials from service account JSON file.
+        """
+        from google.oauth2 import service_account
+
+        # Path to the service account JSON file
+        service_account_file = settings.GOOGLE_SERVICE_ACCOUNT_FILE
+
+        # Check if credentials file exists
+        if not os.path.exists(service_account_file):
+            logging.error(
+                f"Google service account file not found: {service_account_file}"
+            )
+            raise HTTPException(
+                status_code=500, detail="Google Drive service account file not found"
+            )
+
+        # Define the required scopes
+        SCOPES = ["https://www.googleapis.com/auth/drive"]
+
+        try:
+            credentials = service_account.Credentials.from_service_account_file(
+                service_account_file, scopes=SCOPES
+            )
+            return credentials
+        except Exception as e:
+            logging.error(f"Error loading Google credentials: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to load Google credentials: {str(e)}"
+            )
+
     async def create_report(
         self, db: AsyncSession, report: ReportGenerateRequest
     ) -> dict:

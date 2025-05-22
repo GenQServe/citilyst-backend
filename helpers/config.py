@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     ONESIGNAL_API_KEY: Optional[str] = None
     ONESIGNAL_OTP_TEMPLATE_ID: Optional[str] = None
     N8N_API_URL: Optional[str] = None
+    GOOGLE_DRIVE_FOLDER_ID: Optional[str] = None
+    GOOGLE_SERVICE_ACCOUNT_FILE: Optional[str] = None
 
     def is_production(self) -> bool:
         env = self.ENVIRONTMENT.lower()
