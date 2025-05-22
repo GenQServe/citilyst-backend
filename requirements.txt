@@ -39,3 +39,4 @@ httpx
 aioresponses
 aiohttp
 cloudinary
+WeasyPrint

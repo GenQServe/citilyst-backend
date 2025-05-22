@@ -47,9 +47,9 @@ class Report(Base):
     feedback = Column(String(255), nullable=True)
     images_url = Column(ARRAY(String), nullable=True)
     location = Column(String(255), nullable=True)
-
-    created_at = Column(DateTime(timezone=True), default=func.now())
+    file_url = Column(String(255), nullable=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
 
     user = relationship("User", back_populates="reports")
     category = relationship("ReportCategory", back_populates="reports")
@@ -61,19 +61,27 @@ class Report(Base):
 
     def __init__(
         self,
+        report_id: str,
         user_id: str,
         category_key: str,
         formal_description: str,
         status: ReportStatus = ReportStatus.pending,
         feedback: str = None,
+        district_id: str = None,
+        village_id: str = None,
+        file_url: str = None,
         images_url: list = None,
         location: str = None,
     ):
+        self.id = report_id
         self.user_id = user_id
         self.category_key = category_key
         self.formal_description = formal_description
         self.status = status
         self.feedback = feedback
+        self.district_id = district_id
+        self.village_id = village_id
+        self.file_url = file_url
         self.images_url = images_url or []
         self.location = location
         self.created_at = datetime.now(timezone.utc)
@@ -90,6 +98,7 @@ class Report(Base):
             "status": self.status,
             "feedback": self.feedback,
             "images": self.images_url,
+            "file_url": self.file_url,
             "location": self.location,
             "created_at": self.created_at,
             "updated_at": self.updated_at,

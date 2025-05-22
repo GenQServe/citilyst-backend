@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laporan Pengaduan Infrastruktur</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 12pt;
+      background-color: #fff;
+      color: #000;
+      padding: 2cm;
+    }
+
+    .container {
+      max-width: 21cm;
+      margin: auto;
+      background: #fff;
+    }
+
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+    }
+
+    .header h2 {
+      text-transform: uppercase;
+      font-size: 16pt;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .document-number {
+      font-size: 11pt;
+      margin-top: 5px;
+    }
+
+    .metadata-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    .metadata-table td {
+      padding: 6px 0;
+      vertical-align: top;
+    }
+
+    .metadata-table td:first-child {
+      width: 35%;
+      font-weight: bold;
+    }
+
+    .section-title {
+      font-weight: bold;
+      text-decoration: underline;
+      margin: 20px 0 10px;
+      font-size: 12pt;
+    }
+
+    .content-text {
+      text-align: justify;
+      text-indent: 1cm;
+      margin-bottom: 15px;
+    }
+
+    .attachment-section {
+      margin-top: 30px;
+    }
+
+    .attachment-title {
+      text-align: left;
+      text-decoration: underline;
+      font-weight: bold;
+      font-size: 12pt;
+      margin-bottom: 15px;
+    }
+
+    .attachment-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px;
+    }
+
+    .attachment-item img {
+      width: 100%;
+      height: auto;
+      border: 1px solid #000;
+    }
+
+    .attachment-caption {
+      font-style: italic;
+      font-size: 10pt;
+      text-align: center;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Laporan Pengaduan {{ report_data.category_name }}</h2>
+      <div class="document-number">Nomor Pengaduan: {{ report_data.report_id }}</div>
+    </div>
+
+    <table class="metadata-table">
+      <tr>
+        <td>Nomor Pengaduan</td>
+        <td>: {{ report_data.report_id }}</td>
+      </tr>
+      <tr>
+        <td>Tanggal Laporan</td>
+        <td>: {{ report_data.report_time }}</td>
+      </tr>
+      <tr>
+        <td>Nama Pelapor</td>
+        <td>: {{ report_data.user_name }}</td>
+      </tr>
+      <tr>
+        <td>Alamat Pelapor</td>
+        <td>: {{ report_data.location }}</td>
+      </tr>
+      <tr>
+        <td>Jenis Pengaduan</td>
+        <td>: {{ report_data.category_name }}</td>
+      </tr>
+    </table>
+
+    <div class="section-title">I. Deskripsi Pengaduan</div>
+    {% for paragraf in report_data.description.split("\n\n") %}
+    <div class="content-text">
+      {{ paragraf | safe}}
+    </div>
+    {% endfor %}
+    {% if report_data.attachments and report_data.attachments | length > 0 %}
+    <div class="attachment-section">
+      <div class="attachment-title">Lampiran Dokumentasi</div>
+      <div class="attachment-grid">
+        {% for lampiran in report_data.attachments %}
+        <div class="attachment-item">
+          <img src="{{ lampiran }}" alt="Dokumentasi" />
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</body>
+
+</html>
