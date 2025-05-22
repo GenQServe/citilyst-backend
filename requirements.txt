@@ -40,3 +40,5 @@ aioresponses
 aiohttp
 cloudinary
 WeasyPrint
+google-api-python-client
+google-auth

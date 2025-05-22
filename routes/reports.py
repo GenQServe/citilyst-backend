@@ -316,7 +316,9 @@ async def submit_report(
         template_name = "report.html"
         output_file_path = f"outputs/report-{payload.report_id}.pdf"
         pdf_generated = await generate_pdf_report(
-            report_data, template_name, output_file_path
+            template_name=template_name,
+            output_file_path=output_file_path,
+            report_data=report_data,
         )
 
         if not pdf_generated:
@@ -328,9 +330,22 @@ async def submit_report(
         # get fiile and upload to cloudinary
 
         # Upload PDF to Cloudinary
-        upload_result = await upload_file(
-            output_file_path, folder="reports/pdf", public_id=payload.report_id
+        # upload_result = await upload_file(
+        #     output_file_path,
+        #     folder="reports/pdf",
+        #     public_id=settings.GOOGLE_DRIVE_FOLDER_ID,
+        # )
+
+        upload_result = await reports_service.upload_file_to_google_drive(
+            file_path=output_file_path,
+            folder_id=settings.GOOGLE_DRIVE_FOLDER_ID,
         )
+        if not upload_result:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"message": "Failed to upload PDF to Cloudinary"},
+            )
+        logging.info(f"PDF uploaded successfully: {upload_result}")
 
         upload_data = ReportGenerateRequest(
             report_id=payload.report_id,
@@ -340,7 +355,7 @@ async def submit_report(
             district_id=payload.district_id,
             village_id=payload.village_id,
             location=payload.location,
-            file_url=upload_result.get("secure_url"),
+            file_url=upload_result.get("web_content_link"),
             images_url=payload.images_url,
         )
 
