@@ -1,7 +1,9 @@
 import dis
 import logging
 import os
+from tempfile import template
 from urllib.parse import urlencode
+from venv import logger
 import redis.asyncio as redis
 import requests
 from datetime import datetime, timedelta, timezone
@@ -354,3 +356,25 @@ class ReportService:
         except Exception as e:
             logging.error(f"Error creating report: {str(e)}")
             raise Exception(f"Failed to create report: {str(e)}")
+
+    def formatted_report_status(self, status) -> str:
+        """
+        Format the report status to a more readable format.
+        """
+        try:
+            if status == ReportStatus.pending:
+                return "Menunggu"
+            elif status == ReportStatus.in_progress:
+                return "Dalam Proses"
+            elif status == ReportStatus.resolved:
+                return "Selesai"
+            elif status == ReportStatus.rejected:
+                return "Ditolak"
+        except ValueError as ve:
+            logger.error(f"Value error in formatting report status: {str(ve)}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid report status: {str(ve)}"
+            )
+        except Exception as e:
+            logger.error(f"Error formatting report status: {str(e)}")
+            raise Exception(f"Failed to format report status: {str(e)}")

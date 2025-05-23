@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #059669, #34d399);
+            padding: 25px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .content {
+            padding: 25px;
+        }
+
+        .message-info {
+            background-color: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .message-info p {
+            margin: 8px 0;
+            color: #666;
+        }
+
+        .message-info strong {
+            color: #059669;
+            font-weight: 600;
+        }
+
+        .message-content {
+            background-color: #f0fdf4;
+            border-left: 4px solid #059669;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .message-content p {
+            margin: 0;
+            white-space: pre-line;
+            color: #374151;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px 25px;
+            color: #6b7280;
+            font-size: 14px;
+            background-color: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .highlight {
+            /* Kept this class in case you want to highlight something, though not used in the report info below */
+            color: #059669;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Detail Laporan</h1>
+            <p>Berikut adalah detail laporan yang telah diterima oleh CityList.</p>
+        </div>
+        <div class="content">
+            <div class="message-info">
+                <p><strong>Tanggal:</strong> {{updated_at}}</p>
+                <p><strong>Nomor Pengaduan:</strong> {{report_id}}</p>
+
+                <p><strong>Kategori:</strong> {{category_name}}</p>
+                <p><strong>Status:</strong> {{status}}</p>
+
+                <p><strong>Feedback:</strong></p>
+                <div class="message-content">
+                    <p>{{feedback}}</p>
+                </div>
+            </div>
+
+            <p>Anda dapat melihat detail lebih lanjut di Web CityList.</p>
+        </div>
+        <div class="footer">
+            <p>Laporan ini dihasilkan oleh sistem CityList</p>
+        </div>
+    </div>
+</body>
+
+</html>

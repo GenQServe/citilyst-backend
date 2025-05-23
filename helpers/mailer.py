@@ -21,6 +21,41 @@ def render_otp_template(otp_code: str) -> str:
         return template.render(otp_code=otp_code)
 
 
+def render_status_report_template(
+    report_id: str,
+    category_name: str,
+    status: str,
+    updated_at: str,
+    feedback: str,
+) -> str:
+    with open("templates/status_report_email.html", "r") as file:
+        template = Template(file.read())
+        return template.render(
+            report_id=report_id,
+            category_name=category_name,
+            status=status,
+            updated_at=updated_at,
+            feedback=feedback,
+        )
+
+
+def render_template(template_name: str, **kwargs) -> str:
+    """
+    Render a template with the given context.
+
+    Args:
+        template_name (str): The name of the template file.
+        **kwargs: The context variables to pass to the template.
+
+    Returns:
+        str: The rendered HTML content.
+    """
+    template_path = Path(__file__).parent.parent / "templates" / template_name
+    with open(template_path, "r") as file:
+        template = Template(file.read())
+        return template.render(**kwargs)
+
+
 config = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USER_NAME or "",
     MAIL_PASSWORD=settings.MAIL_PASSWORD or SecretStr(""),
@@ -120,4 +155,47 @@ async def send_otp_email(email_to: EmailStr, user_id: str):
             return False
     except Exception as e:
         logging.error(f"Error sending OTP email: {e}")
+        return False
+
+
+async def send_status_report_email(
+    email_to: EmailStr,
+    report_id: str,
+    category_name: str,
+    status: str,
+    updated_at: str,
+    feedback: str,
+):
+    """
+    Send status report email
+    """
+    url = "https://onesignal.com/api/v1/notifications"
+    headers = {
+        "Authorization": "Basic " + (settings.ONESIGNAL_API_KEY or ""),
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "app_id": settings.ONESIGNAL_APP_ID,
+        "include_email_tokens": [email_to],
+        "email_subject": f"Laporan {report_id} telah diperbarui",
+        "email_body": render_status_report_template(
+            report_id=report_id,
+            category_name=category_name,
+            status=status,
+            updated_at=updated_at,
+            feedback=feedback,
+        ),
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            logging.info(f"Status report email sent successfully to {email_to}")
+            return True
+        else:
+            logging.error(f"Failed to send status report email: {response.text}")
+            return False
+    except Exception as e:
+        logging.error(f"Error sending status report email: {e}")
         return False
