@@ -13,11 +13,13 @@ from fastapi import (
     Form,
     File,
     UploadFile,
+    BackgroundTasks,
 )
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+from helpers import mailer
 from helpers.common import create_verification_token
 from sqlalchemy.ext.asyncio import AsyncSession
 from helpers.db import db_connection, get_db
@@ -170,7 +172,7 @@ async def generate_description(
             "description": generate_request.description,
             "location": generate_request.location,
         }
-        # request tp n8n
+
         async with AsyncClient() as client:
             print(f"N8N API URL: {settings.N8N_API_URL}")
             response = await client.post(
@@ -200,7 +202,6 @@ async def generate_description(
         )
 
 
-# submit image
 @routes_report.post("/images", summary="Upload images")
 async def upload_images(
     request: Request,
@@ -376,7 +377,45 @@ async def submit_report(
         )
 
 
-# get all reports
+@routes_report.get(
+    "/user/{user_id}",
+    response_model=dict,
+    summary="Get report by user id",
+)
+async def get_report_by_user_id(
+    request: Request,
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    dependencies=Depends(PermissionChecker([ReportPermissions.permissions.READ])),
+) -> JSONResponse:
+    """
+    Get report by user id
+    """
+    try:
+        reports_service = ReportService()
+        report = await reports_service.get_report_by_user_id(db, user_id)
+        if not report:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"message": "Report not found"},
+            )
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "Report retrieved successfully",
+                "data": jsonable_encoder(report),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error fetching report: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Failed to fetch report"},
+        )
+
+
 @routes_report.get(
     "/",
     response_model=dict,
@@ -434,8 +473,29 @@ async def update_report(
                 content={"message": "Report not found"},
             )
 
-        # Update report
         updated_report = await reports_service.update_report(db, report_id, payload)
+        category = await reports_service.get_category_by_key(
+            db, updated_report.get("category_key")
+        )
+        formatted_time = (
+            updated_report.get("updated_at")
+            .replace(tzinfo=timezone.utc)
+            .astimezone(timezone(timedelta(hours=7)))
+            .strftime("%Y-%m-%d %H:%M:%S")
+        )
+        status_formatted = reports_service.formatted_report_status(
+            updated_report.get("status")
+        )
+        print(f"Report status: {status_formatted}")
+
+        await mailer.send_status_report_email(
+            email_to=report.get("user").get("email"),
+            report_id=report_id,
+            category_name=category.get("name"),
+            status=status_formatted,
+            updated_at=formatted_time,
+            feedback=updated_report.get("feedback"),
+        )
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,

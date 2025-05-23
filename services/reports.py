@@ -1,7 +1,9 @@
 import dis
 import logging
 import os
+from tempfile import template
 from urllib.parse import urlencode
+from venv import logger
 import redis.asyncio as redis
 import requests
 from datetime import datetime, timedelta, timezone
@@ -110,6 +112,73 @@ class ReportService:
         except Exception as e:
             logging.error(f"Error fetching report: {str(e)}")
             raise Exception(f"Failed to fetch report: {str(e)}")
+
+    async def get_report_by_user_id(self, db: AsyncSession, user_id: str) -> List[dict]:
+        try:
+            result = await db.execute(
+                select(Report)
+                .where(Report.user_id == user_id)
+                .order_by(Report.created_at.desc())
+            )
+            reports = result.scalars().all()
+            reports_list = [report.to_dict() for report in reports]
+            # get village and district names
+            for report in reports_list:
+                if report["district_id"]:
+                    district = await db.execute(
+                        select(District).where(District.id == report["district_id"])
+                    )
+                    district_model = district.scalars().first()
+                    report["district_name"] = (
+                        district_model.name if district_model else None
+                    )
+                else:
+                    report["district_name"] = None
+
+                if report["village_id"]:
+                    village = await db.execute(
+                        select(Village).where(Village.id == report["village_id"])
+                    )
+                    village_model = village.scalars().first()
+                    report["village_name"] = (
+                        village_model.name if village_model else None
+                    )
+                else:
+                    report["village_name"] = None
+
+            for report in reports_list:
+                category = await db.execute(
+                    select(ReportCategory).where(
+                        ReportCategory.key == report["category_key"]
+                    )
+                )
+                category_model = category.scalars().first()
+
+                if category_model:
+                    report["category_name"] = category_model.name
+                else:
+                    report["category_name"] = None
+
+            report_list_formatted = [
+                {
+                    "report_id": report["id"],
+                    "user_id": report["user_id"],
+                    "category_name": report["category_name"],
+                    "district_name": report["district_name"],
+                    "village_name": report["village_name"],
+                    "location": report["location"],
+                    "file_url": report["file_url"],
+                    "status": report["status"],
+                    "feedback": report["feedback"],
+                    "created_at": report["created_at"].isoformat(),
+                    "updated_at": report["updated_at"].isoformat(),
+                }
+                for report in reports_list
+            ]
+            return report_list_formatted
+        except Exception as e:
+            logging.error(f"Error fetching reports by user ID: {str(e)}")
+            raise Exception(f"Failed to fetch reports by user ID: {str(e)}")
 
     async def get_all_reports(self, db: AsyncSession) -> List[dict]:
         try:
@@ -287,3 +356,25 @@ class ReportService:
         except Exception as e:
             logging.error(f"Error creating report: {str(e)}")
             raise Exception(f"Failed to create report: {str(e)}")
+
+    def formatted_report_status(self, status) -> str:
+        """
+        Format the report status to a more readable format.
+        """
+        try:
+            if status == ReportStatus.pending:
+                return "Menunggu"
+            elif status == ReportStatus.in_progress:
+                return "Dalam Proses"
+            elif status == ReportStatus.resolved:
+                return "Selesai"
+            elif status == ReportStatus.rejected:
+                return "Ditolak"
+        except ValueError as ve:
+            logger.error(f"Value error in formatting report status: {str(ve)}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid report status: {str(ve)}"
+            )
+        except Exception as e:
+            logger.error(f"Error formatting report status: {str(e)}")
+            raise Exception(f"Failed to format report status: {str(e)}")

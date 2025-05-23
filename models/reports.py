@@ -25,6 +25,7 @@ Status :
 
 class ReportStatus(str, Enum):
     pending = "pending"
+    in_progress = "in_progress"
     resolved = "resolved"
     rejected = "rejected"
 

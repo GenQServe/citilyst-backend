@@ -13,6 +13,7 @@ services:
       - .env
     depends_on:
       - redis
+      - n8n
     restart: always
     networks:
       - app_network
@@ -26,6 +27,25 @@ services:
       - app_network
     restart: always
 
+  n8n:
+    image: n8nio/n8n
+    container_name: citilyst_n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=n8n
+      - N8N_PORT=5678
+      - GENERIC_TIMEZONE=Asia/Jakarta
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - app_network
+    restart: always
+
 networks:
   app_network:
     driver: bridge
+
+volumes:
+  n8n_data:
+    external: true
