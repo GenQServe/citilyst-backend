@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-alpine
 
 RUN python3 -m pip install --upgrade pip
 
