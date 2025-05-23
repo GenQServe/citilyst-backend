@@ -170,7 +170,7 @@ async def generate_description(
             "description": generate_request.description,
             "location": generate_request.location,
         }
-        # request tp n8n
+
         async with AsyncClient() as client:
             print(f"N8N API URL: {settings.N8N_API_URL}")
             response = await client.post(
@@ -200,7 +200,6 @@ async def generate_description(
         )
 
 
-# submit image
 @routes_report.post("/images", summary="Upload images")
 async def upload_images(
     request: Request,
@@ -376,7 +375,45 @@ async def submit_report(
         )
 
 
-# get all reports
+@routes_report.get(
+    "/user/{user_id}",
+    response_model=dict,
+    summary="Get report by user id",
+)
+async def get_report_by_user_id(
+    request: Request,
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    dependencies=Depends(PermissionChecker([ReportPermissions.permissions.READ])),
+) -> JSONResponse:
+    """
+    Get report by user id
+    """
+    try:
+        reports_service = ReportService()
+        report = await reports_service.get_report_by_user_id(db, user_id)
+        if not report:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"message": "Report not found"},
+            )
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "Report retrieved successfully",
+                "data": jsonable_encoder(report),
+            },
+        )
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+    except Exception as e:
+        logging.error(f"Error fetching report: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Failed to fetch report"},
+        )
+
+
 @routes_report.get(
     "/",
     response_model=dict,
