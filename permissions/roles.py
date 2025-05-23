@@ -23,10 +23,9 @@ ROLE_PERMISSIONS = {
             Users.permissions.DELETE,
         ],
         [
-            Items.permissions.CREATE,
-            Items.permissions.READ,
-            Items.permissions.UPDATE,
-            Items.permissions.DELETE,
+            Reports.permissions.READ,
+            Reports.permissions.UPDATE,
+            Reports.permissions.DELETE,
         ],
         [
             Districts.permissions.CREATE,
@@ -43,9 +42,8 @@ ROLE_PERMISSIONS = {
     ],
     Role.USER: [
         [
-            Items.permissions.CREATE,
-            Items.permissions.READ,
-            Items.permissions.UPDATE,
+            Reports.permissions.CREATE,
+            Reports.permissions.READ,
         ],
         [
             Users.permissions.UPDATE,

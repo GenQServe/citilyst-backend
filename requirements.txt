@@ -36,4 +36,9 @@ pytest-asyncio
 pytest-mock
 pytest-cov
 httpx
+aioresponses
+aiohttp
 cloudinary
+WeasyPrint
+google-api-python-client
+google-auth

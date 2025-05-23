@@ -70,6 +70,7 @@ async def init_models():
         print("Creating database tables if not exist...")
 
         from models.users import User
+        from models.reports import ReportCategory, Report, ReportImage
 
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

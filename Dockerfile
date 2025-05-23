@@ -1,10 +1,4 @@
-FROM python:3.12-slim
-
-# Install dependencies & system packages
-RUN apt-get update && apt-get install -y \
-    curl \
-    redis-tools \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.12-alpine
 
 RUN python3 -m pip install --upgrade pip
 

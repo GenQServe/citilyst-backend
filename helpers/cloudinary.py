@@ -134,4 +134,62 @@ async def delete_image(public_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to delete image: {str(e)}")
 
 
+async def upload_file(
+    file_path: str,
+    folder: str = "uploads",
+    public_id: Optional[str] = None,
+    overwrite: bool = True,
+    tags: Optional[list] = None,
+) -> Dict[str, Any]:
+    """
+    Upload file to Cloudinary from a local file path
+
+    Args:
+        file_path: Path to the file to upload
+        folder: Cloudinary folder to store the file
+        public_id: Custom public ID for the file
+        overwrite: Whether to overwrite existing file with same public_id
+        tags: List of tags to add to the file
+
+    Returns:
+        Dict: Cloudinary upload response
+    """
+    try:
+        # Check if file exists
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+
+        # Upload to Cloudinary
+        upload_options = {
+            "folder": folder,
+            "overwrite": overwrite,
+            "resource_type": "raw",
+        }
+
+        # Add public_id if provided
+        if public_id:
+            upload_options["public_id"] = public_id
+
+        # Add tags if provided
+        if tags:
+            upload_options["tags"] = tags
+
+        # Perform upload
+        result = cloudinary.uploader.upload(file_path, **upload_options)
+        logging.info(
+            f"File uploaded successfully to Cloudinary: {result.get('secure_url')}"
+        )
+
+        return result
+
+    except cloudinary.exceptions.Error as e:
+        logging.error(f"Cloudinary upload error: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Cloudinary upload failed: {str(e)}"
+        )
+    except Exception as e:
+        logging.error(f"Error uploading file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+
 configure_cloudinary()
