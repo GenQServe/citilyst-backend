@@ -3,7 +3,6 @@ from itsdangerous import URLSafeTimedSerializer, BadTimeSignature, SignatureExpi
 import cuid
 from passlib.context import CryptContext
 from pydantic import EmailStr
-
 from helpers.jwt import JwtHelper
 from helpers.config import settings
 
