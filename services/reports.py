@@ -111,6 +111,73 @@ class ReportService:
             logging.error(f"Error fetching report: {str(e)}")
             raise Exception(f"Failed to fetch report: {str(e)}")
 
+    async def get_report_by_user_id(self, db: AsyncSession, user_id: str) -> List[dict]:
+        try:
+            result = await db.execute(
+                select(Report)
+                .where(Report.user_id == user_id)
+                .order_by(Report.created_at.desc())
+            )
+            reports = result.scalars().all()
+            reports_list = [report.to_dict() for report in reports]
+            # get village and district names
+            for report in reports_list:
+                if report["district_id"]:
+                    district = await db.execute(
+                        select(District).where(District.id == report["district_id"])
+                    )
+                    district_model = district.scalars().first()
+                    report["district_name"] = (
+                        district_model.name if district_model else None
+                    )
+                else:
+                    report["district_name"] = None
+
+                if report["village_id"]:
+                    village = await db.execute(
+                        select(Village).where(Village.id == report["village_id"])
+                    )
+                    village_model = village.scalars().first()
+                    report["village_name"] = (
+                        village_model.name if village_model else None
+                    )
+                else:
+                    report["village_name"] = None
+
+            for report in reports_list:
+                category = await db.execute(
+                    select(ReportCategory).where(
+                        ReportCategory.key == report["category_key"]
+                    )
+                )
+                category_model = category.scalars().first()
+
+                if category_model:
+                    report["category_name"] = category_model.name
+                else:
+                    report["category_name"] = None
+
+            report_list_formatted = [
+                {
+                    "report_id": report["id"],
+                    "user_id": report["user_id"],
+                    "category_name": report["category_name"],
+                    "district_name": report["district_name"],
+                    "village_name": report["village_name"],
+                    "location": report["location"],
+                    "file_url": report["file_url"],
+                    "status": report["status"],
+                    "feedback": report["feedback"],
+                    "created_at": report["created_at"].isoformat(),
+                    "updated_at": report["updated_at"].isoformat(),
+                }
+                for report in reports_list
+            ]
+            return report_list_formatted
+        except Exception as e:
+            logging.error(f"Error fetching reports by user ID: {str(e)}")
+            raise Exception(f"Failed to fetch reports by user ID: {str(e)}")
+
     async def get_all_reports(self, db: AsyncSession) -> List[dict]:
         try:
             result = await db.execute(
