@@ -172,7 +172,7 @@ async def generate_description(
         }
         # request tp n8n
         async with AsyncClient() as client:
-            logging.info(f"N8N API URL: {settings.N8N_API_URL}")
+            print(f"N8N API URL: {settings.N8N_API_URL}")
             response = await client.post(
                 f"{settings.N8N_API_URL}/webhook/generate-description",
                 json=request_payload,
