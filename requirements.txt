@@ -42,3 +42,4 @@ cloudinary
 WeasyPrint
 google-api-python-client
 google-auth
+locust
