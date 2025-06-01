@@ -2,6 +2,7 @@
 Thumbs.db
 .DS_Store
 
+credentials/
 # ide
 .idea
 .vscode
