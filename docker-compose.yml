@@ -38,7 +38,7 @@ services:
       # Basic n8n Configuration
       - N8N_HOST=n8n.genqserve.rekrutgenai.com
       - N8N_PROTOCOL=https
-      - N8N_PORT=443
+      - N8N_PORT=5678
       - WEBHOOK_URL=https://n8n.genqserve.rekrutgenai.com
       
       - N8N_RUNNERS_ENABLED=true
