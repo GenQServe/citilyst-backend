@@ -41,6 +41,8 @@ services:
       - N8N_PORT=443
       - WEBHOOK_URL=https://n8n.genqserve.rekrutgenai.com
       
+      - N8N_RUNNERS_ENABLED=true
+
       # Security & Production Settings
       - N8N_SECURE_COOKIE=true
       - N8N_METRICS=true
