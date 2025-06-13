@@ -50,17 +50,7 @@ services:
       # Timezone
       - GENERIC_TIMEZONE=Asia/Jakarta
       - TZ=Asia/Jakarta
-      
-      # Execution Settings
-      - EXECUTIONS_PROCESS=main
-      - EXECUTIONS_MODE=queue
-      - EXECUTIONS_TIMEOUT=3600
-      - EXECUTIONS_TIMEOUT_MAX=7200
-      
-      # Database (Optional - for production you might want to use external DB)
-      - DB_TYPE=sqlite
-      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
-      
+  
       # OAuth & Authentication Settings
       - N8N_OAUTH_CALLBACK_URLS=https://n8n.genqserve.rekrutgenai.com/rest/oauth2-credential/callback,https://n8n.genqserve.rekrutgenai.com/rest/oauth1-credential/callback
       
@@ -74,13 +64,13 @@ services:
       - ONESIGNAL_APP_ID=ecfccbe5-b876-4be9-b49f-5665f98b50d4
       
       # Performance Settings
-      - N8N_PAYLOAD_SIZE_MAX=16777216
-      - NODE_OPTIONS=--max-old-space-size=4096
+      # - N8N_PAYLOAD_SIZE_MAX=16777216
+      # - NODE_OPTIONS=--max-old-space-size=4096
       
-      # Queue Settings (if using queue mode)
-      - QUEUE_BULL_REDIS_HOST=redis
-      - QUEUE_BULL_REDIS_PORT=6379
-      - QUEUE_HEALTH_CHECK_ACTIVE=true
+      # # Queue Settings (if using queue mode)
+      # - QUEUE_BULL_REDIS_HOST=redis
+      # - QUEUE_BULL_REDIS_PORT=6379
+      # - QUEUE_HEALTH_CHECK_ACTIVE=true
       
     volumes:
       - n8n_data:/home/node/.n8n
